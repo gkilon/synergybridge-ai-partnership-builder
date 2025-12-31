@@ -8,6 +8,7 @@ export interface Question {
   id: string;
   category: Category;
   text: string;
+  shortLabel?: string; // מילה מרכזית לתצוגה בגרפים
 }
 
 export interface ParticipantResponse {

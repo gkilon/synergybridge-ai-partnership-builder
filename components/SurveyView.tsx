@@ -144,23 +144,23 @@ const SurveyView: React.FC<Props> = ({ session, onSubmit, onGoAdmin }) => {
               <h3 className="text-3xl font-black leading-tight text-white">{currentQ.text}</h3>
             </div>
 
-            <div className="grid grid-cols-5 gap-4">
-              {[1, 2, 3, 4, 5].map(num => (
+            <div className="grid grid-cols-7 gap-2 md:gap-4">
+              {[1, 2, 3, 4, 5, 6, 7].map(num => (
                 <button
                   key={num}
                   onClick={() => {
                     setScores({ ...scores, [currentQ.id]: num });
                     setTimeout(() => setStep(step + 1), 250);
                   }}
-                  className={`aspect-square rounded-2xl text-3xl font-black flex items-center justify-center transition-all duration-300 ${scores[currentQ.id] === num ? 'bg-indigo-600 text-white scale-110 shadow-2xl shadow-indigo-500/40' : 'bg-zinc-900 text-zinc-600 hover:bg-zinc-800 hover:text-zinc-300'}`}
+                  className={`aspect-square rounded-xl md:rounded-2xl text-xl md:text-3xl font-black flex items-center justify-center transition-all duration-300 ${scores[currentQ.id] === num ? 'bg-indigo-600 text-white scale-110 shadow-2xl shadow-indigo-500/40' : 'bg-zinc-900 text-zinc-600 hover:bg-zinc-800 hover:text-zinc-300'}`}
                 >
                   {num}
                 </button>
               ))}
             </div>
             <div className="flex justify-between text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] px-2">
-              <span className="flex items-center gap-1">👎 חלש מאוד</span>
-              <span className="flex items-center gap-1">מצוין 👍</span>
+              <span className="flex items-center gap-1">👎 חלש מאוד (1)</span>
+              <span className="flex items-center gap-1">מצוין 👍 (7)</span>
             </div>
           </div>
         ) : (

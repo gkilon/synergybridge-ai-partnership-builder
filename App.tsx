@@ -21,29 +21,33 @@ const App: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshData = useCallback(async () => {
-    const loadedSessions = await dbService.getSessions();
-    setSessions(loadedSessions);
-    return loadedSessions;
-  }, []);
-
-  const init = async () => {
-    setIsLoading(true);
-    const params = new URLSearchParams(window.location.search);
-    const sid = params.get('sid');
-    
-    const loaded = await refreshData();
-
-    if (sid) {
-      setView({ main: 'survey', adminTab: 'list', selectedId: sid });
-    } else {
-      setView({ main: 'admin', adminTab: 'list', selectedId: null });
-    }
-    setIsLoading(false);
-  };
-
+  // סנכרון נתונים בזמן אמת מהענן
   useEffect(() => {
-    init();
+    let unsubscribe = () => {};
+    
+    const setupSync = async () => {
+      setIsLoading(true);
+      const params = new URLSearchParams(window.location.search);
+      const sid = params.get('sid');
+      
+      // האזנה לשינויים ב-Firebase
+      unsubscribe = dbService.subscribeToSessions((updatedSessions) => {
+        setSessions(updatedSessions);
+        setIsLoading(false);
+      });
+
+      // טעינה ראשונית
+      const initial = await dbService.getSessions();
+      setSessions(initial);
+
+      if (sid) {
+        setView({ main: 'survey', adminTab: 'list', selectedId: sid });
+      }
+      setIsLoading(false);
+    };
+
+    setupSync();
+    return () => unsubscribe();
   }, []);
 
   const handleAddSession = async (title: string, sides: string[], questions: Question[], context: string) => {
@@ -58,18 +62,15 @@ const App: React.FC = () => {
       createdAt: new Date().toISOString()
     };
     await dbService.saveSession(newSession);
-    await refreshData();
     setView({ main: 'admin', adminTab: 'list', selectedId: null });
   };
 
   const handleUpdateSession = async (updated: PartnershipSession) => {
     await dbService.saveSession(updated);
-    await refreshData();
   };
 
   const submitResponse = async (sid: string, response: ParticipantResponse) => {
     await dbService.addResponse(sid, response);
-    await refreshData();
   };
 
   const goToAdmin = () => {
@@ -94,7 +95,7 @@ const App: React.FC = () => {
           <div className="w-16 h-16 border-4 border-indigo-500/20 rounded-full"></div>
           <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
         </div>
-        <p className="text-zinc-500 font-bold animate-pulse tracking-widest text-sm uppercase">SynergyBridge Loading...</p>
+        <p className="text-zinc-500 font-bold animate-pulse tracking-widest text-sm uppercase">SynergyBridge Syncing...</p>
       </div>
     );
   }

@@ -44,7 +44,8 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
 
   const getChartData = () => {
     return session.questions.map(q => {
-      const dataPoint: any = { subject: q.text.length > 20 ? q.text.slice(0, 18) + '...' : q.text };
+      // Use shortLabel if available, otherwise truncate the text
+      const dataPoint: any = { subject: q.shortLabel || (q.text.length > 12 ? q.text.slice(0, 10) + '...' : q.text) };
       session.sides.forEach(side => {
         const sideResponses = session.responses.filter(r => r.side === side);
         const avg = sideResponses.length > 0 
@@ -112,16 +113,23 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         {/* Spider Chart Section */}
         <div className="glass rounded-[2.5rem] p-8 md:p-10 space-y-8 min-h-[500px] flex flex-col">
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-black text-white">השוואת תפיסות בין הצדדים</h3>
+            <h3 className="text-xl font-black text-white">השוואת תפיסות (ציר 1-7)</h3>
             <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">{session.responses.length} מענים</span>
           </div>
           
           <div className="w-full flex-grow h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={getChartData()}>
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={getChartData()}>
                 <PolarGrid stroke="#3f3f46" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#71717a', fontSize: 10, fontWeight: 700 }} />
-                <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: '#3f3f46', fontSize: 10 }} />
+                <PolarAngleAxis 
+                  dataKey="subject" 
+                  tick={{ fill: '#a1a1aa', fontSize: 12, fontWeight: 800 }} 
+                />
+                <PolarRadiusAxis 
+                  angle={30} 
+                  domain={[0, 7]} 
+                  tick={{ fill: '#3f3f46', fontSize: 10 }} 
+                />
                 {session.sides.map((side, idx) => (
                   <Radar
                     key={side}
@@ -136,7 +144,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
               </RadarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-center text-xs text-zinc-500 italic">הגרף מציג את הממוצע של כל צד בכל אחד מהקריטריונים.</p>
+          <p className="text-center text-xs text-zinc-500 italic">הגרף מציג את הממוצע של כל צד במילים מרכזיות למניעת חפיפה.</p>
         </div>
 
         {/* Gap Analysis Table */}
@@ -161,12 +169,12 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                         {side}
                       </td>
                       <td className="py-5 text-center">
-                         <span className={`px-3 py-1.5 rounded-xl font-black text-sm ${Number(avgs.systemic) < 3 ? 'text-rose-400 bg-rose-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>
+                         <span className={`px-3 py-1.5 rounded-xl font-black text-sm ${Number(avgs.systemic) < 4 ? 'text-rose-400 bg-rose-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>
                            {avgs.systemic}
                          </span>
                       </td>
                       <td className="py-5 text-center">
-                        <span className={`px-3 py-1.5 rounded-xl font-black text-sm ${Number(avgs.relational) < 3 ? 'text-rose-400 bg-rose-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>
+                        <span className={`px-3 py-1.5 rounded-xl font-black text-sm ${Number(avgs.relational) < 4 ? 'text-rose-400 bg-rose-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>
                            {avgs.relational}
                          </span>
                       </td>
@@ -184,7 +192,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
              <p className="text-xs text-zinc-400 leading-relaxed font-medium">
                {session.responses.length < 2 
                 ? "יש צורך במענים משני הצדדים כדי להציג ניתוח פערים השוואתי." 
-                : "פער של מעל 1.0 נקודות בין הצדדים מעיד על חוסר הלימה בתפיסת המציאות - מומלץ לבצע סדנת שיתוף פעולה."}
+                : "בסקאלה של 7, פער של מעל 1.5 נקודות בין הצדדים מעיד על חוסר הלימה משמעותי."}
              </p>
           </div>
         </div>
