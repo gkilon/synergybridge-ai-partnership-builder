@@ -4,7 +4,14 @@ import { PartnershipSession, AIAnalysis } from "../types";
 import { ANALYSIS_PROMPT_TEMPLATE } from "../constants";
 
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Always fetch the key from process.env.API_KEY at the moment of request
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("מפתח API לא הוגדר. אנא בחר מפתח בהגדרות המערכת.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   const formattedData = {
     title: session.title,
@@ -31,7 +38,7 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -67,8 +74,11 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
 
     const text = response.text || "{}";
     return JSON.parse(text);
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI Analysis failed:", error);
-    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע. נסה שוב בעוד דקה.");
+    if (error?.message?.includes("entity was not found") || error?.message?.includes("API Key")) {
+      throw new Error("AUTH_ERROR");
+    }
+    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע. וודא שבחרת מפתח API תקין.");
   }
 };

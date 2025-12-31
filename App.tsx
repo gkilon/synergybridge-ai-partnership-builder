@@ -59,7 +59,7 @@ const App: React.FC = () => {
     };
     await dbService.saveSession(newSession);
     await refreshData();
-    setView(prev => ({ ...prev, adminTab: 'list' }));
+    setView({ main: 'admin', adminTab: 'list', selectedId: null });
   };
 
   const handleUpdateSession = async (updated: PartnershipSession) => {
@@ -105,26 +105,26 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30 font-assistant">
       <nav className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer group" onClick={goToAdmin}>
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center font-black text-white shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform">SB</div>
             <div>
                <h1 className="text-xl font-black tracking-tight leading-none">Synergy<span className="text-indigo-500">Bridge</span></h1>
-               <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Partnership Intelligence</span>
+               <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Partnership Intelligence</span>
             </div>
           </div>
           <div className="flex gap-4">
             <button 
               onClick={goToAdmin}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${view.adminTab === 'list' ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${view.adminTab === 'list' ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
             >
               ממשקים פעילים
             </button>
             <button 
               onClick={() => openSettings()}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${view.adminTab === 'settings' ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${view.adminTab === 'settings' && !view.selectedId ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
             >
               + ממשק חדש
             </button>
