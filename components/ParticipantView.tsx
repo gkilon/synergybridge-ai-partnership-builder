@@ -12,6 +12,7 @@ interface ParticipantViewProps {
 const ParticipantView: React.FC<ParticipantViewProps> = ({ sessions, onSubmitResponse }) => {
   const [selectedSessionId, setSelectedSessionId] = useState('');
   const [participantName, setParticipantName] = useState('');
+  const [side, setSide] = useState('');
   const [role, setRole] = useState('');
   const [scores, setScores] = useState<Record<string, number>>({});
   const [comments, setComments] = useState('');
@@ -19,11 +20,14 @@ const ParticipantView: React.FC<ParticipantViewProps> = ({ sessions, onSubmitRes
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSessionId || !participantName) return;
+    // Added side validation check
+    if (!selectedSessionId || !participantName || !side) return;
 
+    // Added missing 'side' property to fix type error
     const newResponse: ParticipantResponse = {
       id: Math.random().toString(36).substr(2, 9),
       participantName,
+      side,
       role,
       scores,
       comments,
@@ -45,7 +49,7 @@ const ParticipantView: React.FC<ParticipantViewProps> = ({ sessions, onSubmitRes
         <h2 className="text-2xl font-bold text-slate-800 mb-2">תודה על המענה!</h2>
         <p className="text-slate-600">התשובות שלך נשמרו וישמשו לניתוח השותפות.</p>
         <button 
-          onClick={() => {setSubmitted(false); setScores({}); setComments(''); setParticipantName(''); setRole('');}}
+          onClick={() => {setSubmitted(false); setScores({}); setComments(''); setParticipantName(''); setSide(''); setRole('');}}
           className="mt-6 text-indigo-600 font-semibold hover:underline"
         >
           מענה נוסף
@@ -73,7 +77,10 @@ const ParticipantView: React.FC<ParticipantViewProps> = ({ sessions, onSubmitRes
               required
               className="border p-3 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none"
               value={selectedSessionId}
-              onChange={(e) => setSelectedSessionId(e.target.value)}
+              onChange={(e) => {
+                setSelectedSessionId(e.target.value);
+                setSide(''); // Reset side when session changes
+              }}
             >
               <option value="">בחר...</option>
               {sessions.map(s => (
@@ -92,8 +99,24 @@ const ParticipantView: React.FC<ParticipantViewProps> = ({ sessions, onSubmitRes
               onChange={(e) => setParticipantName(e.target.value)}
             />
           </div>
-          <div className="flex flex-col gap-2 md:col-span-2">
-            <label className="text-sm font-bold text-slate-700">תפקיד / צד בשותפות</label>
+          
+          {/* Split side and role into separate inputs to handle 'side' required property */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-bold text-slate-700">צד בשותפות</label>
+            <select 
+              required
+              className="border p-3 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none"
+              value={side}
+              onChange={(e) => setSide(e.target.value)}
+            >
+              <option value="">בחר צד...</option>
+              {selectedSession?.sides.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-bold text-slate-700">תפקיד ספציפי</label>
             <input 
               type="text" 
               className="border p-3 rounded-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none"

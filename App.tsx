@@ -12,69 +12,66 @@ const App: React.FC = () => {
   const [surveyId, setSurveyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initial Data Loading
+  const init = async () => {
+    setIsLoading(true);
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('sid');
+    
+    const loadedSessions = await dbService.getSessions();
+    setSessions(loadedSessions);
+
+    if (id) {
+      setSurveyId(id);
+      setCurrentView('survey');
+    } else {
+      setCurrentView('admin');
+    }
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const init = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const id = params.get('sid');
-      if (id) {
-        setSurveyId(id);
-        setCurrentView('survey');
-      }
-      
-      const loadedSessions = await dbService.getSessions();
-      if (loadedSessions.length > 0) {
-        setSessions(loadedSessions);
-      } else {
-        // Create demo if none exists
-        const demo: PartnershipSession = {
-          id: 'demo-123',
-          title: 'ממשק מכירות - שירות לקוחות',
-          description: 'שיפור התיאום בתהליך העברת הלקוח',
-          sides: ['מכירות', 'שירות'],
-          questions: [...DEFAULT_QUESTIONS],
-          responses: [],
-          createdAt: new Date().toISOString()
-        };
-        setSessions([demo]);
-        await dbService.saveSession(demo);
-      }
-      setIsLoading(false);
-    };
     init();
   }, []);
 
-  const handleAddSession = async (title: string, sides: string[], customQuestions: Question[]) => {
+  const handleAddSession = async (title: string, sides: string[], questions: Question[], context: string) => {
     const newSession: PartnershipSession = {
       id: Math.random().toString(36).substr(2, 9),
       title,
       description: '',
+      context,
       sides,
-      questions: customQuestions,
+      questions,
       responses: [],
       createdAt: new Date().toISOString()
     };
-    const updated = [newSession, ...sessions];
-    setSessions(updated);
     await dbService.saveSession(newSession);
+    const updated = await dbService.getSessions();
+    setSessions(updated);
   };
 
   const handleUpdateSession = async (updated: PartnershipSession) => {
-    setSessions(sessions.map(s => s.id === updated.id ? updated : s));
     await dbService.saveSession(updated);
+    const refreshed = await dbService.getSessions();
+    setSessions(refreshed);
   };
 
   const submitResponse = async (sid: string, response: ParticipantResponse) => {
     await dbService.addResponse(sid, response);
-    // Refresh local state
     const loadedSessions = await dbService.getSessions();
     setSessions(loadedSessions);
   };
 
+  const goToAdmin = () => {
+    window.history.pushState({}, '', window.location.pathname);
+    setSurveyId(null);
+    setCurrentView('admin');
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-zinc-500 font-bold animate-pulse">טוען נתונים מהענן...</p>
       </div>
     );
   }
@@ -86,19 +83,19 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30">
-      <nav className="border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">S</div>
-            <h1 className="text-xl font-bold tracking-tight">Synergy<span className="text-indigo-500 font-extrabold">Bridge</span> <span className="text-xs text-zinc-500 font-normal">ADMIN</span></h1>
+      <nav className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-4 cursor-pointer" onClick={goToAdmin}>
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center font-black text-white shadow-xl shadow-indigo-500/20">SB</div>
+            <div>
+               <h1 className="text-xl font-black tracking-tight leading-none">Synergy<span className="text-indigo-500">Bridge</span></h1>
+               <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Partnership Intelligence</span>
+            </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-2">
             <button 
-              onClick={() => {
-                window.history.pushState({}, '', window.location.pathname);
-                setCurrentView('admin');
-              }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentView === 'admin' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'}`}
+              onClick={goToAdmin}
+              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${currentView === 'admin' ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
             >
               לוח בקרה
             </button>
@@ -106,7 +103,7 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-6 md:p-8">
+      <main className="max-w-7xl mx-auto p-6 md:p-10">
         <AdminDashboard 
           sessions={sessions} 
           onAdd={handleAddSession} 

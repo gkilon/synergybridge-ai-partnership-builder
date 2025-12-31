@@ -13,6 +13,7 @@ export interface Question {
 export interface ParticipantResponse {
   id: string;
   participantName: string;
+  side: string; // The specific side/department the person represents
   role: string;
   scores: Record<string, number>;
   comments: string;
@@ -23,8 +24,9 @@ export interface PartnershipSession {
   id: string;
   title: string;
   description: string;
+  context?: string; // Dependency relations / Process context
   sides: string[];
-  questions: Question[]; // Custom questions per session
+  questions: Question[]; 
   responses: ParticipantResponse[];
   analysis?: AIAnalysis;
   createdAt: string;

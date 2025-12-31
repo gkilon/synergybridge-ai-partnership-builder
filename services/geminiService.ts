@@ -8,8 +8,10 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
   
   const formattedData = {
     title: session.title,
-    sides: session.sides,
+    context: session.context || "לא הוגדר הקשר ספציפי",
+    sidesDefined: session.sides,
     responses: session.responses.map(r => ({
+      sideRepresented: r.side,
       role: r.role,
       scores: r.scores,
       comments: r.comments
@@ -19,8 +21,12 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
   const prompt = `
     ${ANALYSIS_PROMPT_TEMPLATE}
     
-    נתוני הממשק:
+    נתוני הממשק והקשר ארגוני:
     ${JSON.stringify(formattedData, null, 2)}
+
+    שים לב: 
+    - הנתונים כוללים את ה"צד" (sideRepresented) של כל משיב. השווה בין תפיסות הצדדים.
+    - ההקשר (context) מסביר את יחסי התלות - התחשב בזה בהמלצות האופרטיביות.
   `;
 
   try {
