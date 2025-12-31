@@ -15,6 +15,8 @@ import {
 } from 'firebase/firestore';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
 
+const STORAGE_KEY = 'synergy_db_v3';
+
 const getEnv = (key: string): string => {
   try {
     const env = (typeof process !== 'undefined' && process.env) ? process.env : (window as any).process?.env;
@@ -33,7 +35,7 @@ const firebaseConfig = {
   appId: getEnv('FIREBASE_APP_ID')
 };
 
-const isFirebaseEnabled = !!firebaseConfig.projectId;
+const isFirebaseEnabled = !!firebaseConfig.projectId && firebaseConfig.projectId !== "";
 
 let db: any = null;
 let auth: any = null;
@@ -44,9 +46,18 @@ if (isFirebaseEnabled) {
     db = getFirestore(app);
     auth = getAuth(app);
   } catch (e) {
-    console.warn("Firebase initialization failed.", e);
+    console.warn("Firebase initialization failed. Using local storage.");
   }
 }
+
+const getLocalSessions = (): PartnershipSession[] => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  return saved ? JSON.parse(saved) : [];
+};
+
+const saveLocalSessions = (sessions: PartnershipSession[]) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+};
 
 export const dbService = {
   isCloud(): boolean {
@@ -70,41 +81,53 @@ export const dbService = {
       try {
         const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
+        const sessions = querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
+        if (sessions.length > 0) return sessions;
       } catch (e) {
-        console.error("Firestore error (likely unauthorized):", e);
-        // If not logged in, we only get an error here because of our new rules
+        console.error("Cloud fetch failed, trying local:", e);
       }
     }
-    
-    const saved = localStorage.getItem('synergy_db_v2');
-    return saved ? JSON.parse(saved) : [];
+    return getLocalSessions();
   },
 
   async saveSession(session: PartnershipSession): Promise<void> {
+    // 1. Always Save Locally first to ensure safety
+    const local = getLocalSessions();
+    const idx = local.findIndex(s => s.id === session.id);
+    if (idx >= 0) local[idx] = session;
+    else local.push(session);
+    saveLocalSessions(local);
+
+    // 2. Try Cloud if enabled
     if (db) {
       try {
         await setDoc(doc(db, 'sessions', session.id), session);
-        return;
       } catch (e) {
-        console.error("Firestore save failed:", e);
+        console.error("Cloud save failed, data is safe locally:", e);
       }
     }
-    // Local storage fallback omitted for brevity but remains same as before
   },
 
   async addResponse(sessionId: string, response: ParticipantResponse): Promise<void> {
+    // 1. Local Update
+    const local = getLocalSessions();
+    const session = local.find(s => s.id === sessionId);
+    if (session) {
+      if (!session.responses) session.responses = [];
+      session.responses.push(response);
+      saveLocalSessions(local);
+    }
+
+    // 2. Cloud Update
     if (db) {
       try {
         const docRef = doc(db, 'sessions', sessionId);
         await updateDoc(docRef, {
           responses: arrayUnion(response)
         });
-        return;
       } catch (e) {
-        console.error("Firestore addResponse failed:", e);
+        console.error("Cloud response add failed:", e);
       }
     }
-    // Local storage fallback...
   }
 };
