@@ -4,11 +4,12 @@ import { PartnershipSession, AIAnalysis } from "../types";
 import { ANALYSIS_PROMPT_TEMPLATE } from "../constants";
 
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  // Always fetch the key from process.env.API_KEY at the moment of request
-  const apiKey = process.env.API_KEY;
+  // Always fetch the key at the moment of request. 
+  // We prioritize process.env.API_KEY as per system requirements but allow VITE fallback for local development if needed.
+  const apiKey = (process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "").trim();
   
   if (!apiKey) {
-    throw new Error("מפתח API לא הוגדר. אנא בחר מפתח בהגדרות המערכת.");
+    throw new Error("מפתח API לא הוגדר. אנא וודא שהגדרת VITE_GEMINI_API_KEY או API_KEY.");
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -79,6 +80,6 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
     if (error?.message?.includes("entity was not found") || error?.message?.includes("API Key")) {
       throw new Error("AUTH_ERROR");
     }
-    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע. וודא שבחרת מפתח API תקין.");
+    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע. וודא שהגדרת מפתח API תקין.");
   }
 };

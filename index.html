@@ -35,14 +35,22 @@
       .animate-slideDown {
         animation: slideDown 0.4s ease-out forwards;
       }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.3);
+        border-radius: 10px;
+      }
     </style>
     <script>
-      // Shim process.env for browser environments
-      // Ensure 'process' is available as a global variable
-      window.process = window.process || { env: { NODE_ENV: 'production' } };
-      if (!window.process.env) window.process.env = { NODE_ENV: 'production' };
-      if (!window.process.env.NODE_ENV) window.process.env.NODE_ENV = 'production';
-      var process = window.process;
+      // Only shim process if it doesn't exist to avoid overwriting environment-injected process
+      if (typeof window.process === 'undefined') {
+        window.process = { env: { NODE_ENV: 'production' } };
+      }
     </script>
     <script type="importmap">
 {

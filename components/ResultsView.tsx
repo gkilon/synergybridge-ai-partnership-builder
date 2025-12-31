@@ -16,12 +16,11 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   const [loading, setLoading] = useState(false);
 
   const handleAnalyze = async () => {
-    // Check for API Key first
-    if (typeof (window as any).aistudio !== 'undefined') {
+    // Check for API Key selection if the capability exists
+    if (typeof (window as any).aistudio?.hasSelectedApiKey === 'function') {
       const hasKey = await (window as any).aistudio.hasSelectedApiKey();
       if (!hasKey) {
         await (window as any).aistudio.openSelectKey();
-        // After opening, proceed assuming key is selected as per instructions
       }
     }
 
@@ -32,7 +31,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     } catch (e: any) {
       if (e.message === "AUTH_ERROR") {
         alert("נדרשת בחירת מפתח API תקין להרצת הניתוח.");
-        if (typeof (window as any).aistudio !== 'undefined') {
+        if (typeof (window as any).aistudio?.openSelectKey === 'function') {
           await (window as any).aistudio.openSelectKey();
         }
       } else {
@@ -117,7 +116,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
             <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">{session.responses.length} מענים</span>
           </div>
           
-          <div className="flex-grow w-full relative min-h-[350px]">
+          <div className="w-full flex-grow h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={getChartData()}>
                 <PolarGrid stroke="#3f3f46" />
