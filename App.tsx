@@ -4,11 +4,21 @@ import { PartnershipSession, ParticipantResponse, Question } from './types';
 import { dbService } from './services/dbService';
 import AdminDashboard from './components/AdminDashboard';
 import SurveyView from './components/SurveyView';
+import ResultsView from './components/ResultsView';
+
+type ViewState = {
+  main: 'admin' | 'survey';
+  adminTab: 'list' | 'settings' | 'results';
+  selectedId: string | null;
+};
 
 const App: React.FC = () => {
   const [sessions, setSessions] = useState<PartnershipSession[]>([]);
-  const [currentView, setCurrentView] = useState<'admin' | 'survey'>('admin');
-  const [surveyId, setSurveyId] = useState<string | null>(null);
+  const [view, setView] = useState<ViewState>({
+    main: 'admin',
+    adminTab: 'list',
+    selectedId: null
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshData = useCallback(async () => {
@@ -25,10 +35,9 @@ const App: React.FC = () => {
     const loaded = await refreshData();
 
     if (sid) {
-      setSurveyId(sid);
-      setCurrentView('survey');
+      setView({ main: 'survey', adminTab: 'list', selectedId: sid });
     } else {
-      setCurrentView('admin');
+      setView({ main: 'admin', adminTab: 'list', selectedId: null });
     }
     setIsLoading(false);
   };
@@ -50,6 +59,7 @@ const App: React.FC = () => {
     };
     await dbService.saveSession(newSession);
     await refreshData();
+    setView(prev => ({ ...prev, adminTab: 'list' }));
   };
 
   const handleUpdateSession = async (updated: PartnershipSession) => {
@@ -63,14 +73,18 @@ const App: React.FC = () => {
   };
 
   const goToAdmin = () => {
-    // Clear URL and refresh app state
     const url = new URL(window.location.href);
     url.searchParams.delete('sid');
     window.history.pushState({}, '', url.toString());
-    
-    setSurveyId(null);
-    setCurrentView('admin');
-    refreshData();
+    setView({ main: 'admin', adminTab: 'list', selectedId: null });
+  };
+
+  const openSettings = (id: string | null = null) => {
+    setView({ main: 'admin', adminTab: 'settings', selectedId: id });
+  };
+
+  const openResults = (id: string) => {
+    setView({ main: 'admin', adminTab: 'results', selectedId: id });
   };
 
   if (isLoading) {
@@ -85,9 +99,9 @@ const App: React.FC = () => {
     );
   }
 
-  if (currentView === 'survey' && surveyId) {
-    const session = sessions.find(s => s.id === surveyId);
-    return <SurveyView session={session} onSubmit={(res) => submitResponse(surveyId, res)} onGoAdmin={goToAdmin} />;
+  if (view.main === 'survey' && view.selectedId) {
+    const session = sessions.find(s => s.id === view.selectedId);
+    return <SurveyView session={session} onSubmit={(res) => submitResponse(view.selectedId!, res)} onGoAdmin={goToAdmin} />;
   }
 
   return (
@@ -101,23 +115,50 @@ const App: React.FC = () => {
                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Partnership Intelligence</span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-4">
             <button 
               onClick={goToAdmin}
-              className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all ${currentView === 'admin' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${view.adminTab === 'list' ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
             >
-              לוח בקרה
+              ממשקים פעילים
+            </button>
+            <button 
+              onClick={() => openSettings()}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${view.adminTab === 'settings' ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
+            >
+              + ממשק חדש
             </button>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto p-6 md:p-10">
-        <AdminDashboard 
-          sessions={sessions} 
-          onAdd={handleAddSession} 
-          onUpdate={handleUpdateSession} 
-        />
+        {view.adminTab === 'list' && (
+          <AdminDashboard 
+            sessions={sessions} 
+            onOpenSettings={openSettings}
+            onOpenResults={openResults}
+          />
+        )}
+        
+        {view.adminTab === 'settings' && (
+          <AdminDashboard 
+            sessions={sessions} 
+            onAdd={handleAddSession} 
+            onUpdate={handleUpdateSession}
+            initialEditingId={view.selectedId}
+            forceShowAdd={true}
+            onCancel={goToAdmin}
+          />
+        )}
+
+        {view.adminTab === 'results' && view.selectedId && (
+          <ResultsView 
+            session={sessions.find(s => s.id === view.selectedId)!} 
+            onUpdate={handleUpdateSession}
+            onBack={goToAdmin}
+          />
+        )}
       </main>
     </div>
   );

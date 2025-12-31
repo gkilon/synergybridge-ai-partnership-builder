@@ -2,22 +2,24 @@
 import React, { useState, useEffect } from 'react';
 import { PartnershipSession, Question, Category } from '../types';
 import { DEFAULT_QUESTIONS } from '../constants';
-import { analyzePartnership } from '../services/geminiService';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { dbService } from '../services/dbService';
 
 interface Props {
   sessions: PartnershipSession[];
-  onAdd: (title: string, sides: string[], questions: Question[], context: string) => void;
-  onUpdate: (updated: PartnershipSession) => void;
+  onAdd?: (title: string, sides: string[], questions: Question[], context: string) => void;
+  onUpdate?: (updated: PartnershipSession) => void;
+  onOpenSettings?: (id: string) => void;
+  onOpenResults?: (id: string) => void;
+  initialEditingId?: string | null;
+  forceShowAdd?: boolean;
+  onCancel?: () => void;
 }
 
-const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
+const AdminDashboard: React.FC<Props> = ({ 
+  sessions, onAdd, onUpdate, onOpenSettings, onOpenResults, 
+  initialEditingId, forceShowAdd, onCancel 
+}) => {
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-  
   const [newTitle, setNewTitle] = useState('');
   const [newSides, setNewSides] = useState('');
   const [newContext, setNewContext] = useState('');
@@ -25,7 +27,16 @@ const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
 
   useEffect(() => {
     dbService.onAuthChange((user) => setIsAdmin(!!user));
-  }, []);
+    if (initialEditingId) {
+      const s = sessions.find(x => x.id === initialEditingId);
+      if (s) {
+        setNewTitle(s.title);
+        setNewSides(s.sides.join(', '));
+        setNewContext(s.context || '');
+        setEditingQuestions(s.questions);
+      }
+    }
+  }, [initialEditingId, sessions]);
 
   if (!isAdmin && dbService.isCloud()) {
     return (
@@ -34,7 +45,7 @@ const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
           <svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-3xl font-black">כניסת מנהל</h2>
+          <h2 className="text-3xl font-black text-white">כניסת מנהל</h2>
           <p className="text-zinc-500 max-w-sm mx-auto">התחבר כדי לנהל ממשקים, להפיק שאלונים ולנתח נתונים בבינה מלאכותית.</p>
         </div>
         <button 
@@ -48,70 +59,15 @@ const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
     );
   }
 
-  const handleCreate = () => {
-    if (!newTitle || !newSides) return;
-    onAdd(newTitle, newSides.split(',').map(s => s.trim()), editingQuestions, newContext);
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setNewTitle(''); setNewSides(''); setNewContext(''); setEditingQuestions(DEFAULT_QUESTIONS); 
-    setShowAdd(false); setEditingSessionId(null);
-  };
-
-  const handleStartEdit = (session: PartnershipSession) => {
-    setEditingSessionId(session.id);
-    setNewTitle(session.title);
-    setNewSides(session.sides.join(', '));
-    setNewContext(session.context || '');
-    setEditingQuestions(session.questions);
-    setShowAdd(true);
-  };
-
-  const handleSaveEdit = () => {
-    const session = sessions.find(s => s.id === editingSessionId);
-    if (session) {
-      onUpdate({
-        ...session,
-        title: newTitle,
-        context: newContext,
-        sides: newSides.split(',').map(s => s.trim()),
-        questions: editingQuestions
-      });
-    }
-    resetForm();
-  };
-
-  const handleAnalyze = async (session: PartnershipSession) => {
-    setLoadingId(session.id);
-    try {
-      const result = await analyzePartnership(session);
-      onUpdate({ ...session, analysis: result });
-    } catch (e) { alert(e); } finally { setLoadingId(null); }
-  };
-
-  return (
-    <div className="space-y-12 animate-fadeIn pb-20">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h2 className="text-4xl font-black">ניהול ממשקים</h2>
-          <p className="text-zinc-500 mt-2 font-medium">כאן תוכל להגדיר את יחסי הגומלין ולשלוח שאלונים לצדדים.</p>
-        </div>
-        <button 
-          onClick={() => { resetForm(); setShowAdd(true); }}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3.5 rounded-2xl font-black transition-all shadow-xl shadow-indigo-600/20 flex items-center gap-3"
-        >
-          <span className="text-2xl leading-none">+</span> שותפות חדשה
-        </button>
-      </div>
-
-      {(showAdd) && (
-        <div className="glass p-8 md:p-12 rounded-[2.5rem] animate-slideDown border-indigo-500/20 space-y-10 shadow-2xl">
+  if (forceShowAdd) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-10 animate-slideDown">
+        <div className="glass p-8 md:p-12 rounded-[2.5rem] border-indigo-500/20 space-y-10 shadow-2xl">
           <div className="flex justify-between items-center">
-            <h3 className="text-2xl font-black text-indigo-400">
-              {editingSessionId ? 'עריכת ממשק' : 'הגדרת ממשק חדש'}
+            <h3 className="text-3xl font-black text-indigo-400">
+              {initialEditingId ? 'עריכת ממשק' : 'הגדרת ממשק חדש'}
             </h3>
-            <button onClick={resetForm} className="text-zinc-500 hover:text-white font-bold transition-colors">ביטול X</button>
+            <button onClick={onCancel} className="text-zinc-500 hover:text-white font-bold transition-colors">חזור</button>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -119,7 +75,7 @@ const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
               <label className="text-xs font-black text-zinc-500 uppercase tracking-widest">שם הממשק</label>
               <input 
                 placeholder="למשל: תפעול ומכירות"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all text-white"
                 value={newTitle} onChange={e => setNewTitle(e.target.value)}
               />
             </div>
@@ -127,16 +83,16 @@ const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
               <label className="text-xs font-black text-zinc-500 uppercase tracking-widest">צדדים מעורבים (מופרדים בפסיק)</label>
               <input 
                 placeholder="צד א', צד ב'"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all text-white"
                 value={newSides} onChange={e => setNewSides(e.target.value)}
               />
             </div>
             <div className="md:col-span-2 space-y-2">
               <label className="text-xs font-black text-zinc-500 uppercase tracking-widest">הקשר ארגוני ותלות (איך הממשק עובד? מי מעביר למי?)</label>
               <textarea 
-                rows={3}
+                rows={4}
                 placeholder="תאר כאן את תהליך העבודה בין הצדדים, מי הלקוח ומי הספק, או את יחסי התלות ביניהם..."
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all text-white"
                 value={newContext} onChange={e => setNewContext(e.target.value)}
               />
             </div>
@@ -154,7 +110,7 @@ const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
                         next[idx].text = e.target.value;
                         setEditingQuestions(next);
                       }}
-                      className="flex-grow bg-transparent outline-none border-none text-sm"
+                      className="flex-grow bg-transparent outline-none border-none text-sm text-zinc-200"
                     />
                     <button 
                       onClick={() => {
@@ -162,7 +118,7 @@ const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
                         next[idx].category = next[idx].category === Category.SYSTEMIC ? Category.RELATIONAL : Category.SYSTEMIC;
                         setEditingQuestions(next);
                       }}
-                      className={`text-[10px] font-bold px-2 py-1 rounded ${q.category === Category.SYSTEMIC ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}
+                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors ${q.category === Category.SYSTEMIC ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}`}
                     >
                       {q.category === Category.SYSTEMIC ? 'מערכתי' : 'יחסים'}
                     </button>
@@ -179,97 +135,88 @@ const AdminDashboard: React.FC<Props> = ({ sessions, onAdd, onUpdate }) => {
 
           <div className="flex justify-end gap-4 pt-6">
             <button 
-              onClick={editingSessionId ? handleSaveEdit : handleCreate}
+              onClick={() => {
+                if (initialEditingId && onUpdate) {
+                  onUpdate({
+                    ...sessions.find(s=>s.id === initialEditingId)!,
+                    title: newTitle,
+                    sides: newSides.split(',').map(s=>s.trim()),
+                    context: newContext,
+                    questions: editingQuestions
+                  });
+                } else if (onAdd) {
+                  onAdd(newTitle, newSides.split(',').map(s=>s.trim()), editingQuestions, newContext);
+                }
+              }}
               className="bg-indigo-600 px-12 py-4 rounded-2xl font-black hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/10"
             >
-              {editingSessionId ? 'שמור שינויים' : 'צור שותפות ושלח לשאלון'}
+              {initialEditingId ? 'שמור שינויים' : 'צור שותפות ושלח לשאלון'}
             </button>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 gap-8">
+  return (
+    <div className="space-y-12 animate-fadeIn pb-20">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h2 className="text-4xl font-black text-white">ממשקים פעילים</h2>
+          <p className="text-zinc-500 mt-2 font-medium">ניהול ותצוגת תמונת המצב של כלל השותפויות בארגון.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sessions.map(session => (
-          <div key={session.id} className="glass rounded-[2rem] overflow-hidden group hover:border-indigo-500/30 transition-all duration-500">
-            <div className="p-8 md:p-10 border-b border-zinc-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div>
-                <h3 className="text-2xl font-black">{session.title}</h3>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {session.sides.map(s => <span key={s} className="text-[10px] font-bold px-2 py-1 bg-zinc-900 rounded-md text-zinc-400 border border-zinc-800">{s}</span>)}
+          <div key={session.id} className="glass rounded-[2rem] p-8 space-y-6 flex flex-col group hover:border-indigo-500/30 transition-all duration-300">
+             <div className="flex justify-between items-start">
+                <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center font-black text-zinc-500 group-hover:text-indigo-400 group-hover:bg-indigo-500/10 transition-colors">
+                  {session.responses.length}
                 </div>
-                {session.context && (
-                   <p className="text-xs text-zinc-500 mt-4 max-w-xl italic line-clamp-1">{session.context}</p>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button onClick={() => handleStartEdit(session)} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-5 py-2.5 rounded-xl text-xs font-bold transition-all">ערוך הגדרות</button>
+                <div className="flex gap-2">
+                   <button 
+                    onClick={() => onOpenSettings?.(session.id)}
+                    className="p-2 text-zinc-500 hover:text-white transition-colors"
+                   >
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                   </button>
+                </div>
+             </div>
+             
+             <div className="flex-grow">
+                <h3 className="text-xl font-black text-white">{session.title}</h3>
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {session.sides.map(s => <span key={s} className="text-[9px] font-bold px-2 py-0.5 bg-zinc-900 rounded text-zinc-500 border border-zinc-800">{s}</span>)}
+                </div>
+             </div>
+
+             <div className="space-y-3 pt-4 border-t border-zinc-800/50">
                 <button 
-                   onClick={() => {
+                  onClick={() => onOpenResults?.(session.id)}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-600/10"
+                >
+                  צפה בתוצאות וניתוח AI
+                </button>
+                <button 
+                  onClick={() => {
                      const url = `${window.location.origin}${window.location.pathname}?sid=${session.id}`;
                      navigator.clipboard.writeText(url);
-                     alert('הקישור הועתק! ניתן לשלוח לצדדים.');
-                   }}
-                   className="bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                     alert('קישור השאלון הועתק');
+                  }}
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-400 py-3 rounded-xl font-bold transition-all border border-zinc-800"
                 >
-                   🔗 העתק קישור לשאלון
+                  העתק קישור לשאלון
                 </button>
-                <button 
-                  disabled={session.responses.length < 2 || loadingId === session.id}
-                  onClick={() => handleAnalyze(session)}
-                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white px-7 py-2.5 rounded-xl text-xs font-black transition-all shadow-lg shadow-emerald-900/20"
-                >
-                  {loadingId === session.id ? 'מנתח...' : '✨ ניתוח AI'}
-                </button>
-              </div>
-            </div>
-
-            <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
-               <div>
-                  <h4 className="text-sm font-black text-zinc-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                     <span className="w-2 h-2 bg-indigo-500 rounded-full"></span> ממוצע הערכות
-                  </h4>
-                  <div className="h-64">
-                    {session.responses.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={session.questions.map(q => ({
-                          subject: q.text.slice(0, 10) + '..',
-                          value: (session.responses.map(r => r.scores[q.id] || 0).reduce((a,b)=>a+b,0) / session.responses.length)
-                        }))}>
-                          <PolarGrid stroke="#3f3f46" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#71717a', fontSize: 10 }} />
-                          <Radar name="AVG" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.6} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="h-full flex items-center justify-center border-2 border-dashed border-zinc-800 rounded-3xl text-zinc-600 text-sm italic">ממתין למענים ראשונים...</div>
-                    )}
-                  </div>
-               </div>
-               <div className="space-y-6">
-                  {session.analysis ? (
-                    <div className="space-y-6">
-                       <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800 italic text-zinc-300 text-sm leading-relaxed">
-                          "{session.analysis.summary}"
-                       </div>
-                       <div className="grid grid-cols-1 gap-4">
-                          {session.analysis.operationalRecommendations.slice(0, 3).map((rec, i) => (
-                            <div key={i} className="flex gap-4 items-center bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20">
-                               <span className="text-indigo-500 font-black text-lg">0{i+1}</span>
-                               <p className="text-xs font-bold text-indigo-100">{rec}</p>
-                            </div>
-                          ))}
-                       </div>
-                    </div>
-                  ) : (
-                    <div className="bg-zinc-900/50 rounded-3xl p-8 text-center space-y-4">
-                       <p className="text-zinc-500 text-sm">התקבלו {session.responses.length} מענים עד כה.</p>
-                       <p className="text-xs text-zinc-600">יש צורך במינימום 2 מענים (מומלץ אחד מכל צד) כדי שה-AI יוכל לנתח את הממשק בצורה אפקטיבית.</p>
-                    </div>
-                  )}
-               </div>
-            </div>
+             </div>
           </div>
         ))}
+
+        {sessions.length === 0 && (
+          <div className="col-span-full py-20 text-center glass rounded-[2.5rem] border-dashed">
+            <p className="text-zinc-500 font-medium">אין ממשקים פעילים כרגע. לחץ על "ממשק חדש" כדי להתחיל.</p>
+          </div>
+        )}
       </div>
     </div>
   );
