@@ -1,7 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { PartnershipSession, AIAnalysis, Category } from '../types';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
+  ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, Tooltip, Cell 
+} from 'recharts';
 import { analyzePartnership } from '../services/geminiService';
 
 interface Props {
@@ -11,6 +14,7 @@ interface Props {
 }
 
 const SIDE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+const CHART_TEXT_STYLE = { fill: '#71717a', fontSize: 10, fontWeight: 900 };
 
 const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   const [loading, setLoading] = useState(false);
@@ -43,19 +47,18 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     }
   };
 
-  // Merged Outcomes and Grouped Stats
-  const { componentStats, criticalGaps } = useMemo(() => {
-    if (!session.questions || session.questions.length === 0) return { componentStats: [], criticalGaps: [] };
+  // Data Processing: Merge outcomes and prepare chart data
+  const { chartData, sortedCategories } = useMemo(() => {
+    if (!session.questions || session.questions.length === 0) return { chartData: [], sortedCategories: [] };
     
-    // Identify Outcome questions to merge them
     const outcomeLabels = ["אפקטיביות גלובלית", "שביעות רצון"];
-    const groups = Array.from(new Set(session.questions.map(q => q.shortLabel || 'כללי')));
+    const rawGroups = Array.from(new Set(session.questions.map(q => q.shortLabel || 'כללי')));
     
-    // Create actual labels to iterate, merging outcomes
-    const labelsToProcess = groups.filter(g => !outcomeLabels.includes(g));
-    labelsToProcess.push("שביעות רצון ותוצאות");
+    // Process unique categories, merging outcomes
+    const categoryLabels = rawGroups.filter(g => !outcomeLabels.includes(g));
+    categoryLabels.push("שביעות רצון ותוצאות");
 
-    const calculatedData = labelsToProcess.map(label => {
+    const stats = categoryLabels.map(label => {
       const dataPoint: any = { subject: label };
       const relatedQuestions = session.questions.filter(q => {
         if (label === "שביעות רצון ותוצאות") return outcomeLabels.includes(q.shortLabel || "");
@@ -101,27 +104,23 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       return { ...dataPoint, totalAvg, gap };
     }).filter(Boolean) as any[];
 
-    const sortedStats = [...calculatedData].sort((a, b) => b.totalAvg - a.totalAvg);
-    const gaps = sortedStats.filter(s => s.gap >= 1.2).sort((a, b) => b.gap - a.gap);
-
-    return { componentStats: sortedStats, criticalGaps: gaps };
+    const sorted = [...stats].sort((a, b) => b.totalAvg - a.totalAvg);
+    return { chartData: stats, sortedCategories: sorted };
   }, [session]);
 
   const healthIndicator = useMemo(() => {
-    const outcome = componentStats.find(s => s.subject === "שביעות רצון ותוצאות");
+    const outcome = sortedCategories.find(s => s.subject === "שביעות רצון ותוצאות");
     const score = outcome ? (outcome.totalAvg / 7) * 100 : 0;
     
     if (score >= 85) return { label: 'שותפות מופתית', color: 'text-emerald-400', bg: 'bg-emerald-400/10', icon: '💎' };
     if (score >= 65) return { label: 'ממשק יציב', color: 'text-indigo-400', bg: 'bg-indigo-400/10', icon: '✅' };
     if (score >= 40) return { label: 'ממשק בסיסי', color: 'text-amber-400', bg: 'bg-amber-400/10', icon: '⚠️' };
     return { label: 'שותפות בשבר', color: 'text-rose-400', bg: 'bg-rose-400/10', icon: '🚨' };
-  }, [componentStats]);
-
-  const analysis = session.analysis;
+  }, [sortedCategories]);
 
   return (
     <div className="space-y-10 animate-fadeIn pb-32 max-w-7xl mx-auto px-4 md:px-0 text-right" dir="rtl">
-      {/* HEADER SECTION - Simplified */}
+      {/* HEADER SECTION */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-zinc-800 pb-8">
         <div className="flex items-center gap-6">
            <div className={`w-20 h-20 rounded-2xl flex items-center justify-center ${healthIndicator.bg} border border-white/5 shadow-xl`}>
@@ -143,152 +142,168 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
              onClick={handleAnalyze}
              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white px-10 py-4 rounded-2xl font-black transition-all shadow-xl flex items-center gap-3"
            >
-             {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : '✨ ניתוח AI'}
+             {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : '✨ הפק תובנות אסטרטגיות (AI)'}
            </button>
         </div>
       </div>
 
-      {/* CORE HIGHLIGHTS: Strengths, Weaknesses, and Critical Gaps */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* CRITICAL GAPS */}
-        <div className="glass rounded-[2.5rem] p-8 border-rose-500/10 bg-rose-500/5">
-           <h3 className="text-lg font-black text-rose-400 mb-6 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              פערים קריטיים בתפיסה
-           </h3>
-           {criticalGaps.length > 0 ? (
-             <div className="space-y-4">
-               {criticalGaps.slice(0, 3).map((gap, i) => (
-                 <div key={i} className="bg-black/20 p-4 rounded-2xl border border-white/5">
-                    <div className="flex justify-between items-center mb-1">
-                       <span className="text-sm font-black text-white">{gap.subject}</span>
-                       <span className="text-xs font-bold text-rose-400">{gap.gap} נק' פער</span>
-                    </div>
-                    <p className="text-[10px] text-zinc-500 font-bold leading-tight">קיימת אי-הסכמה משמעותית לגבי תפקוד הממשק בציר זה.</p>
-                 </div>
-               ))}
-             </div>
-           ) : (
-             <div className="h-40 flex items-center justify-center text-zinc-600 text-sm font-bold italic">לא נמצאו פערים קיצוניים</div>
-           )}
-        </div>
+      {/* DASHBOARD: Radar + Bar Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+         {/* Radar Chart: Global View */}
+         <div className="glass rounded-[3rem] p-10 min-h-[450px] flex flex-col border-white/5 shadow-2xl overflow-hidden">
+            <h3 className="text-xl font-black text-white mb-2">תמונת מצב היקפית</h3>
+            <p className="text-zinc-500 text-xs font-bold mb-6">השוואת תפיסות בין הצדדים לאורך הצירים</p>
+            <div className="flex-grow w-full h-[350px]">
+               <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+                    <PolarGrid stroke="#27272a" />
+                    <PolarAngleAxis dataKey="subject" tick={CHART_TEXT_STYLE} />
+                    <PolarRadiusAxis angle={90} domain={[0, 7]} tick={false} axisLine={false} />
+                    {session.sides.map((side, idx) => (
+                      <Radar
+                        key={side}
+                        name={side}
+                        dataKey={side}
+                        stroke={SIDE_COLORS[idx % SIDE_COLORS.length]}
+                        fill={SIDE_COLORS[idx % SIDE_COLORS.length]}
+                        fillOpacity={0.2}
+                        strokeWidth={3}
+                      />
+                    ))}
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                  </RadarChart>
+               </ResponsiveContainer>
+            </div>
+         </div>
 
-        {/* AI STRENGTHS */}
-        <div className="glass rounded-[2.5rem] p-8 border-emerald-500/10 bg-emerald-500/5">
-           <h3 className="text-lg font-black text-emerald-400 mb-6 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              חוזקות הממשק (AI)
-           </h3>
-           <div className="space-y-3">
-              {analysis ? (
-                [...(analysis.strengths?.systemic || []), ...(analysis.strengths?.relational || [])].slice(0, 4).map((s, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm font-bold text-zinc-300">
-                     <span className="text-emerald-500 mt-1">✦</span>
-                     <span>{s}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="h-40 flex items-center justify-center text-zinc-700 text-sm font-bold italic">ממתין להרצת ניתוח</div>
-              )}
-           </div>
-        </div>
-
-        {/* AI WEAKNESSES */}
-        <div className="glass rounded-[2.5rem] p-8 border-zinc-700 bg-zinc-900/40">
-           <h3 className="text-lg font-black text-zinc-400 mb-6 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              חסמים מרכזיים (AI)
-           </h3>
-           <div className="space-y-3">
-              {analysis ? (
-                [...(analysis.weaknesses?.systemic || []), ...(analysis.weaknesses?.relational || [])].slice(0, 4).map((w, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm font-bold text-zinc-400">
-                     <span className="text-rose-500/60 mt-1">◇</span>
-                     <span>{w}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="h-40 flex items-center justify-center text-zinc-700 text-sm font-bold italic">ממתין להרצת ניתוח</div>
-              )}
-           </div>
-        </div>
+         {/* Bar Chart: Rankings */}
+         <div className="glass rounded-[3rem] p-10 min-h-[450px] flex flex-col border-white/5 shadow-2xl overflow-hidden">
+            <h3 className="text-xl font-black text-white mb-2">דירוג ביצועי הממשק</h3>
+            <p className="text-zinc-500 text-xs font-bold mb-6">ממוצעי הצירים מסודרים מהגבוה לנמוך</p>
+            <div className="flex-grow w-full h-[350px]">
+               <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sortedCategories} layout="vertical" margin={{ left: 20, right: 30, top: 0, bottom: 0 }}>
+                    <XAxis type="number" domain={[0, 7]} hide />
+                    <YAxis dataKey="subject" type="category" width={100} tick={CHART_TEXT_STYLE} axisLine={false} tickLine={false} />
+                    <Tooltip 
+                      cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                      contentStyle={{backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', textAlign: 'right'}}
+                    />
+                    <Bar dataKey="totalAvg" radius={[0, 8, 8, 0]} barSize={24}>
+                       {sortedCategories.map((entry, index) => (
+                         <Cell key={`cell-${index}`} fill={entry.totalAvg >= 5.5 ? '#10b981' : entry.totalAvg >= 4 ? '#6366f1' : '#f43f5e'} />
+                       ))}
+                    </Bar>
+                  </BarChart>
+               </ResponsiveContainer>
+            </div>
+         </div>
       </div>
 
-      {/* MAIN DATA - Sorted Components */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-           <h3 className="text-2xl font-black text-white whitespace-nowrap">ציוני המרכיבים (מהגבוה לנמוך)</h3>
-           <div className="h-px bg-zinc-800 flex-grow"></div>
-        </div>
+      {/* AI STRATEGIC DEEP DIVE */}
+      {session.analysis && (
+        <div className="space-y-12 animate-slideUp pt-8 border-t border-zinc-800">
+           <div className="flex items-center gap-4">
+              <h3 className="text-3xl font-black text-white tracking-tighter">ניתוח אסטרטגי ותוכנית פעולה (AI)</h3>
+              <div className="h-px bg-zinc-800 flex-grow"></div>
+           </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {componentStats.map((stat, i) => (
-            <div key={i} className={`glass p-6 rounded-3xl border-white/5 transition-all group ${stat.subject === 'שביעות רצון ותוצאות' ? 'bg-indigo-500/5 border-indigo-500/20' : ''}`}>
-              <div className="flex justify-between items-start mb-4">
-                <h4 className="text-sm font-black text-white leading-tight max-w-[120px]">{stat.subject}</h4>
-                <div className={`px-3 py-1 rounded-lg font-black text-xs ${stat.totalAvg >= 5.5 ? 'bg-emerald-500/10 text-emerald-400' : stat.totalAvg >= 4 ? 'bg-indigo-500/10 text-indigo-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                  {stat.totalAvg}
-                </div>
-              </div>
-              
-              <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden mb-4">
-                 <div className={`h-full transition-all duration-1000 ${stat.gap > 1.2 ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${(stat.totalAvg / 7) * 100}%` }}></div>
+           {/* Insights Summary */}
+           <div className="glass rounded-[4rem] p-12 md:p-16 border-indigo-500/20 bg-indigo-500/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 text-zinc-900 font-black text-9xl opacity-10 pointer-events-none">"</div>
+              <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-8">תובנת העל והפרשנות המערכתית</h4>
+              <p className="text-2xl md:text-3xl font-black text-zinc-100 leading-tight tracking-tight max-w-4xl">
+                {session.analysis.summary}
+              </p>
+           </div>
+
+           {/* Strengths & Weaknesses Grid */}
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="glass p-10 rounded-[3rem] border-emerald-500/10 bg-emerald-500/5">
+                 <h4 className="text-lg font-black text-emerald-400 mb-8 flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">✦</span>
+                    חוזקות הממשק
+                 </h4>
+                 <div className="space-y-6">
+                    <div>
+                       <h5 className="text-[10px] font-black text-emerald-600/60 uppercase mb-4 tracking-widest">מערכתי</h5>
+                       <ul className="space-y-3">
+                          {session.analysis.strengths.systemic.map((s, i) => (
+                            <li key={i} className="text-sm font-bold text-zinc-300 flex items-start gap-3">
+                               <span className="text-emerald-500/40 mt-1.5">•</span> {s}
+                            </li>
+                          ))}
+                       </ul>
+                    </div>
+                    <div>
+                       <h5 className="text-[10px] font-black text-emerald-600/60 uppercase mb-4 tracking-widest">יחסים</h5>
+                       <ul className="space-y-3">
+                          {session.analysis.strengths.relational.map((s, i) => (
+                            <li key={i} className="text-sm font-bold text-zinc-300 flex items-start gap-3">
+                               <span className="text-emerald-500/40 mt-1.5">•</span> {s}
+                            </li>
+                          ))}
+                       </ul>
+                    </div>
+                 </div>
               </div>
 
-              <div className="flex justify-between items-center">
-                 <div className="flex gap-2">
-                    {session.sides.map((side, idx) => (
-                      <div key={side} className="text-[9px] font-bold text-zinc-500 flex flex-col">
-                        <span className="opacity-60 truncate max-w-[40px]">{side}</span>
-                        <span className="text-zinc-300">{stat[side]}</span>
-                      </div>
+              <div className="glass p-10 rounded-[3rem] border-rose-500/10 bg-rose-500/5">
+                 <h4 className="text-lg font-black text-rose-400 mb-8 flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center">◇</span>
+                    חסמים וסיכונים
+                 </h4>
+                 <div className="space-y-6">
+                    <div>
+                       <h5 className="text-[10px] font-black text-rose-600/60 uppercase mb-4 tracking-widest">מערכתי</h5>
+                       <ul className="space-y-3">
+                          {session.analysis.weaknesses.systemic.map((w, i) => (
+                            <li key={i} className="text-sm font-bold text-zinc-400 flex items-start gap-3">
+                               <span className="text-rose-500/40 mt-1.5">•</span> {w}
+                            </li>
+                          ))}
+                       </ul>
+                    </div>
+                    <div>
+                       <h5 className="text-[10px] font-black text-rose-600/60 uppercase mb-4 tracking-widest">יחסים</h5>
+                       <ul className="space-y-3">
+                          {session.analysis.weaknesses.relational.map((w, i) => (
+                            <li key={i} className="text-sm font-bold text-zinc-400 flex items-start gap-3">
+                               <span className="text-rose-500/40 mt-1.5">•</span> {w}
+                            </li>
+                          ))}
+                       </ul>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           {/* Operational Recommendations */}
+           <div className="space-y-8 pt-6">
+              <h4 className="text-2xl font-black text-white">תוכנית עבודה אופרטיבית</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {/* Systemic Recommendations */}
+                 <div className="space-y-4">
+                    <h5 className="text-sm font-black text-indigo-400 pr-3 border-r-2 border-indigo-500">מהלכים מערכתיים</h5>
+                    {session.analysis.recommendations.systemic.map((rec, i) => (
+                       <div key={i} className="bg-zinc-900/40 p-6 rounded-3xl border border-white/5 flex items-start gap-4 shadow-xl">
+                          <span className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-xs font-black flex-shrink-0">{i+1}</span>
+                          <p className="text-sm font-bold text-zinc-100 leading-snug">{rec}</p>
+                       </div>
                     ))}
                  </div>
-                 {stat.gap > 1.2 && (
-                   <span className="text-[9px] font-black text-rose-400 animate-pulse bg-rose-500/10 px-2 py-0.5 rounded-full">פער חריג!</span>
-                 )}
+                 {/* Relational Recommendations */}
+                 <div className="space-y-4">
+                    <h5 className="text-sm font-black text-purple-400 pr-3 border-r-2 border-purple-500">טיפול בציר היחסים</h5>
+                    {session.analysis.recommendations.relational.map((rec, i) => (
+                       <div key={i} className="bg-zinc-900/40 p-6 rounded-3xl border border-white/5 flex items-start gap-4 shadow-xl">
+                          <span className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center text-xs font-black flex-shrink-0">{i+1}</span>
+                          <p className="text-sm font-bold text-zinc-100 leading-snug">{rec}</p>
+                       </div>
+                    ))}
+                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* AI STRATEGIC SUMMARY & RECOMMENDATIONS - Only if Analysis exists */}
-      {analysis && (
-        <div className="space-y-8 animate-slideUp pt-6">
-          <div className="flex items-center gap-4">
-             <h3 className="text-2xl font-black text-white whitespace-nowrap">המלצות ותובנת על (AI)</h3>
-             <div className="h-px bg-zinc-800 flex-grow"></div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-             <div className="lg:col-span-1 glass rounded-[2.5rem] p-8 border-indigo-500/20 bg-indigo-500/5">
-                <h4 className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-4">סיכום אבחוני</h4>
-                <p className="text-lg font-bold text-zinc-200 leading-snug">{analysis.summary}</p>
-             </div>
-
-             <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                   <h5 className="text-sm font-black text-zinc-500 uppercase tracking-widest px-2">מהלך מערכתי (תשתית)</h5>
-                   {analysis.recommendations?.systemic.slice(0, 3).map((rec, i) => (
-                     <div key={i} className="bg-zinc-900/60 p-5 rounded-2xl border border-zinc-800 flex items-start gap-4 text-sm font-bold text-zinc-200">
-                        <span className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-[10px] flex-shrink-0">{i+1}</span>
-                        {rec}
-                     </div>
-                   ))}
-                </div>
-                <div className="space-y-4">
-                   <h5 className="text-sm font-black text-zinc-500 uppercase tracking-widest px-2">שיפור ציר היחסים (תרבות)</h5>
-                   {analysis.recommendations?.relational.slice(0, 3).map((rec, i) => (
-                     <div key={i} className="bg-zinc-900/60 p-5 rounded-2xl border border-zinc-800 flex items-start gap-4 text-sm font-bold text-zinc-200">
-                        <span className="w-6 h-6 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center text-[10px] flex-shrink-0">{i+1}</span>
-                        {rec}
-                     </div>
-                   ))}
-                </div>
-             </div>
-          </div>
+           </div>
         </div>
       )}
     </div>
