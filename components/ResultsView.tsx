@@ -86,10 +86,10 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     const sum = chartData.reduce((acc, p) => acc + p.average, 0);
     const score = (sum / (chartData.length * 7)) * 100;
 
-    if (score >= 80) return { label: 'סינרגיה עוצמתית', color: 'text-emerald-400', bg: 'bg-emerald-400/10', desc: 'הממשק פועל ברמת סנכרון גבוהה מאוד.' };
-    if (score >= 65) return { label: 'שותפות בתנופה', color: 'text-indigo-400', bg: 'bg-indigo-400/10', desc: 'יש בסיס חזק עם הזדמנויות לשיפור נקודתי.' };
-    if (score >= 45) return { label: 'בשלבי התהוות', color: 'text-amber-400', bg: 'bg-amber-400/10', desc: 'הממשק דורש חיזוק של מנגנוני העבודה.' };
-    return { label: 'אתגר אסטרטגי', color: 'text-rose-400', bg: 'bg-rose-400/10', desc: 'קיימים חסמים משמעותיים הדורשים טיפול שורש.' };
+    if (score >= 80) return { label: 'שותפות מעולה', color: 'text-emerald-400', bg: 'bg-emerald-400/10', desc: 'הממשק פועל ברמת סנכרון ושותפות יוצאת דופן.' };
+    if (score >= 60) return { label: 'ממשק טוב', color: 'text-indigo-400', bg: 'bg-indigo-400/10', desc: 'יש בסיס עבודה בריא עם מרחב לשיפור ביצועים.' };
+    if (score >= 30) return { label: 'יש עוד מה לעבוד', color: 'text-amber-400', bg: 'bg-amber-400/10', desc: 'נדרשת השקעה ממוקדת בבניית הממשק והאמון.' };
+    return { label: 'ממשק טעון שיפור', color: 'text-rose-400', bg: 'bg-rose-400/10', desc: 'קיימים חסמים קריטיים המעכבים את הפעילות המשותפת.' };
   }, [chartData]);
 
   const perceptionGapMeta = useMemo(() => {
@@ -132,21 +132,22 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       {/* Hero Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         
-        {/* Status Card (Replaced Numeric % with Qualitative Label) */}
-        <div className="md:col-span-4 glass rounded-[3rem] p-12 flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden group">
+        {/* Status Card (Qualitative Only) */}
+        <div className="md:col-span-4 glass rounded-[3rem] p-12 flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden group border-indigo-500/10">
            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-           <h4 className="text-zinc-500 font-black text-[10px] uppercase tracking-[0.3em] relative z-10">דופק הממשק הארגוני</h4>
+           <h4 className="text-zinc-500 font-black text-[10px] uppercase tracking-[0.3em] relative z-10">סטטוס השותפות</h4>
            
-           <div className={`w-40 h-40 rounded-full flex items-center justify-center relative z-10 ${overallHealthMeta.bg} border border-white/5 shadow-2xl transition-transform group-hover:scale-105 duration-500`}>
-              <div className="absolute inset-0 rounded-full animate-pulse-slow opacity-20 bg-current"></div>
-              <svg className={`w-20 h-20 ${overallHealthMeta.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+           <div className={`w-44 h-44 rounded-full flex items-center justify-center relative z-10 ${overallHealthMeta.bg} border border-white/5 shadow-2xl transition-all group-hover:scale-105 duration-700`}>
+              <div className="absolute inset-0 rounded-full animate-pulse-slow opacity-10 bg-current"></div>
+              <div className="absolute inset-4 rounded-full border-2 border-dashed border-white/10 opacity-30"></div>
+              <svg className={`w-24 h-24 ${overallHealthMeta.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
            </div>
            
-           <div className="space-y-3 relative z-10">
-              <h3 className={`text-3xl font-black ${overallHealthMeta.color}`}>{overallHealthMeta.label}</h3>
-              <p className="text-sm text-zinc-400 font-medium leading-relaxed max-w-[200px] mx-auto">{overallHealthMeta.desc}</p>
+           <div className="space-y-4 relative z-10">
+              <h3 className={`text-4xl font-black tracking-tight ${overallHealthMeta.color}`}>{overallHealthMeta.label}</h3>
+              <p className="text-sm text-zinc-400 font-medium leading-relaxed max-w-[220px] mx-auto">{overallHealthMeta.desc}</p>
            </div>
         </div>
 
