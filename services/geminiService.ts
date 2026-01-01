@@ -4,7 +4,6 @@ import { PartnershipSession, AIAnalysis } from "../types";
 import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  // Respecting the pattern from the user image while keeping process.env for system requirements
   // @ts-ignore
   const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
   const ai = new GoogleGenAI({ apiKey });
@@ -21,23 +20,24 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
   };
 
   const prompt = `
-    משימה: בצע "ניתוח השפעה אסטרטגי" (Key Driver Analysis).
+    משימה: בצע ניתוח אסטרטגי עמוק לממשק ארגוני.
     
-    מתודולוגיה: ${PARTNERSHIP_METHODOLOGY}
+    מתודולוגיה מחייבת: ${PARTNERSHIP_METHODOLOGY}
     
-    נתונים: ${JSON.stringify(formattedData)}
+    נתונים גולמיים: ${JSON.stringify(formattedData)}
 
-    שלבי הניתוח הנדרשים:
-    1. המשתנה התלוי: השאלות q23 ו-q24 הן התוצאה (שביעות רצון ואפקטיביות). 
-    2. מקדם השפעה: זהה איזה מהתנאים האחרים (אג'נדה, תפקידים, החלטות, תהליכים, כבוד, תקשורת) הכי משפיע על התוצאה הזו בממשק הספציפי הזה.
-    3. פערים: נתח את הפער בין הצדדים.
-    
-    החזר JSON:
+    הנחיות לניתוח:
+    1. השתמש במודל 5 התנאים (אג'נדה, תפקידים, החלטות, שגרות, יחסים).
+    2. זהה חוזקות וחולשות בכל צד (מערכתי ויחסים).
+    3. בצע "ניתוח השפעה" - איך הדרייברים משפיעים על שביעות הרצון (q23, q24).
+    4. זהה פערי תפיסה (Gaps) בין הצדדים - איפה יש חוסר הלימה?
+
+    החזר JSON במבנה המדויק הבא:
     {
-      "strengths": { "systemic": [], "relational": [] },
-      "weaknesses": { "systemic": [], "relational": [] },
-      "recommendations": { "systemic": [], "relational": [] },
-      "summary": "התחל ב'מקדם ההשפעה המרכזי' - מהו הדבר שהכי משפיע על שביעות הרצון כאן. המשך בניתוח פערים וסיים בהמלצות אופרטיביות."
+      "strengths": { "systemic": ["חוזקה 1", "..."], "relational": ["חוזקה 1", "..."] },
+      "weaknesses": { "systemic": ["חולשה 1", "..."], "relational": ["חולשה 1", "..."] },
+      "recommendations": { "systemic": ["המלצה 1", "..."], "relational": ["המלצה 1", "..."] },
+      "summary": "סיכום אסטרטגי קצר (עד 4 שורות) על מצב 'היישות השלישית' והמשתנה שהכי משפיע כרגע."
     }
   `;
 
@@ -45,11 +45,14 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        temperature: 0.7
+      }
     });
     return JSON.parse(response.text || "{}");
   } catch (error) {
     console.error("AI Analysis failed:", error);
-    throw new Error("המערכת נכשלה בניתוח הנתונים.");
+    throw new Error("המערכת נכשלה בניתוח הנתונים. וודא שמפתח ה-API תקין.");
   }
 };
