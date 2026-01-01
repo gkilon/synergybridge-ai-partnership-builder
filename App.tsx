@@ -163,7 +163,7 @@ const App: React.FC = () => {
 
         {view.adminTab === 'results' && view.selectedId && (
           <ResultsView 
-            session={sessions.find(s => s.id === view.selectedId)!} 
+            session={sessions.find(s => s.id === view.selectedId)} 
             onUpdate={handleUpdateSession}
             onBack={goToAdmin}
           />

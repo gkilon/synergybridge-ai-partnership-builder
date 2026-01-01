@@ -5,7 +5,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { analyzePartnership } from '../services/geminiService';
 
 interface Props {
-  session: PartnershipSession;
+  session: PartnershipSession | undefined;
   onUpdate: (updated: PartnershipSession) => void;
   onBack: () => void;
 }
@@ -14,6 +14,15 @@ const SIDE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
 const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   const [loading, setLoading] = useState(false);
+
+  if (!session) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center space-y-6">
+        <p className="text-zinc-500 font-bold">הממשק המבוקש לא נמצא.</p>
+        <button onClick={onBack} className="bg-zinc-800 px-6 py-2 rounded-xl text-white">חזרה</button>
+      </div>
+    );
+  }
 
   const handleAnalyze = async () => {
     setLoading(true);
@@ -34,23 +43,13 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     }
   };
 
-  const PILLAR_MAPPING = [
-    { label: "אג'נדה ומטרות", range: [1, 4] },
-    { label: "תפקידים", range: [5, 7] },
-    { label: "קבלת החלטות", range: [8, 11] },
-    { label: "תהליכים ושגרות", range: [12, 14] },
-    { label: "כבוד הדדי", range: [15, 18] },
-    { label: "תקשורת פתוחה", range: [19, 22] }
-  ];
-
+  // Improved chart logic: Group by 'shortLabel' to be resilient to custom question IDs
   const chartData = useMemo(() => {
-    return PILLAR_MAPPING.map(pillar => {
-      const dataPoint: any = { subject: pillar.label };
-      
-      const relatedQuestions = session.questions.filter(q => {
-        const qNum = parseInt(q.id.replace('q', ''));
-        return qNum >= pillar.range[0] && qNum <= pillar.range[1];
-      });
+    const groups = new Set(session.questions.map(q => q.shortLabel || 'אחר'));
+    
+    return Array.from(groups).map(label => {
+      const dataPoint: any = { subject: label };
+      const relatedQuestions = session.questions.filter(q => (q.shortLabel || 'אחר') === label);
 
       let totalAllSides = 0;
       let countAllSides = 0;
@@ -62,7 +61,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         
         sideResponses.forEach(r => {
           relatedQuestions.forEach(q => {
-            if (r.scores[q.id]) {
+            if (r.scores && r.scores[q.id] !== undefined) {
               totalSide += r.scores[q.id];
               countSide++;
               totalAllSides += r.scores[q.id];
@@ -80,19 +79,25 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   }, [session]);
 
   const globalOutcomeData = useMemo(() => {
-    const qIds = ['q23', 'q24'];
+    // Look for effectiveness/satisfaction questions specifically
+    const outcomeQuestions = session.questions.filter(q => 
+      q.text.includes('אפקטיביות') || q.text.includes('שביעות רצון') || q.id === 'q23' || q.id === 'q24'
+    );
+    
+    if (outcomeQuestions.length === 0) return 0;
+
     let total = 0;
     let count = 0;
     session.responses.forEach(r => {
-      qIds.forEach(id => {
-        if (r.scores[id]) {
-          total += r.scores[id];
+      outcomeQuestions.forEach(q => {
+        if (r.scores && r.scores[q.id] !== undefined) {
+          total += r.scores[q.id];
           count++;
         }
       });
     });
     return count > 0 ? (total / count) : 0;
-  }, [session.responses]);
+  }, [session]);
 
   const overallHealthMeta = useMemo(() => {
     const score = (globalOutcomeData / 7) * 100;
@@ -103,7 +108,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   }, [globalOutcomeData]);
 
   const perceptionGapMeta = useMemo(() => {
-    if (session.sides.length < 2) return null;
+    if (session.sides.length < 2 || chartData.length === 0) return null;
     const s1 = session.sides[0];
     const s2 = session.sides[1];
     let totalGap = 0;
@@ -116,8 +121,12 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     return { label: 'דיסוננס תפיסתי', color: 'text-rose-400', desc: 'פער משמעותי באופן בו הצדדים רואים את השותפות.' };
   }, [chartData, session.sides]);
 
+  // Safely check for analysis data to avoid crashes
+  const hasAnalysis = session.analysis && typeof session.analysis === 'object';
+  const analysis = session.analysis;
+
   return (
-    <div className="space-y-12 animate-fadeIn pb-32 max-w-7xl mx-auto px-4 md:px-0">
+    <div className="space-y-12 animate-fadeIn pb-32 max-w-7xl mx-auto px-4 md:px-0 text-right" dir="rtl">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
         <div>
           <button onClick={onBack} className="text-zinc-500 hover:text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-4 group transition-colors">
@@ -157,30 +166,34 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
              )}
           </div>
           <div className="w-full flex-grow h-[350px] min-h-[350px] relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
-                <PolarGrid stroke="#27272a" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#71717a', fontSize: 10, fontWeight: 900 }} />
-                <PolarRadiusAxis angle={90} domain={[0, 7]} tick={false} axisLine={false} />
-                {session.sides.map((side, idx) => (
-                  <Radar
-                    key={side}
-                    name={side}
-                    dataKey={side}
-                    stroke={SIDE_COLORS[idx % SIDE_COLORS.length]}
-                    fill={SIDE_COLORS[idx % SIDE_COLORS.length]}
-                    fillOpacity={0.2}
-                    strokeWidth={3}
-                  />
-                ))}
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-              </RadarChart>
-            </ResponsiveContainer>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+                  <PolarGrid stroke="#27272a" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#71717a', fontSize: 10, fontWeight: 900 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 7]} tick={false} axisLine={false} />
+                  {session.sides.map((side, idx) => (
+                    <Radar
+                      key={side}
+                      name={side}
+                      dataKey={side}
+                      stroke={SIDE_COLORS[idx % SIDE_COLORS.length]}
+                      fill={SIDE_COLORS[idx % SIDE_COLORS.length]}
+                      fillOpacity={0.2}
+                      strokeWidth={3}
+                    />
+                  ))}
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-zinc-600">אין מספיק נתונים להצגת גרף.</div>
+            )}
           </div>
         </div>
       </div>
 
-      {session.analysis && (
+      {hasAnalysis && analysis && (
         <div className="space-y-12 animate-slideUp">
           <div className="flex items-center gap-6">
              <span className="text-3xl font-black text-white tracking-tight whitespace-nowrap underline decoration-indigo-500 decoration-4 underline-offset-8">ניתוח המומחה (AI Strategic Insight)</span>
@@ -192,7 +205,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                 <div className="absolute top-0 right-0 p-8 text-zinc-900 font-black text-9xl opacity-10 pointer-events-none">"</div>
                 <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mb-10">תובנות עומק וניתוח השפעה</h4>
                 <div className="space-y-8">
-                   {session.analysis.summary.split('\n').map((p, i) => (
+                   {(analysis.summary || '').split('\n').map((p, i) => (
                      <p key={i} className="text-2xl font-bold text-zinc-200 leading-snug tracking-tight">{p}</p>
                    ))}
                 </div>
@@ -200,9 +213,9 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
              
              <div className="space-y-8">
                 <div className="glass rounded-[3rem] p-10 border-emerald-500/10">
-                   <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-6">חוזקות (מערכתי ויחסים)</h4>
+                   <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-6">חוזקות</h4>
                    <ul className="space-y-4">
-                      {session.analysis.strengths.systemic.concat(session.analysis.strengths.relational).map((s, i) => (
+                      {([...(analysis.strengths?.systemic || []), ...(analysis.strengths?.relational || [])]).map((s, i) => (
                         <li key={i} className="text-sm font-bold text-zinc-300 flex items-start gap-3">
                            <span className="text-emerald-500">◆</span> {s}
                         </li>
@@ -210,9 +223,9 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                    </ul>
                 </div>
                 <div className="glass rounded-[3rem] p-10 border-rose-500/10">
-                   <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-6">חסמים ונקודות תורפה</h4>
+                   <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-6">חסמים</h4>
                    <ul className="space-y-4">
-                      {session.analysis.weaknesses.systemic.concat(session.analysis.weaknesses.relational).map((w, i) => (
+                      {([...(analysis.weaknesses?.systemic || []), ...(analysis.weaknesses?.relational || [])]).map((w, i) => (
                         <li key={i} className="text-sm font-bold text-zinc-300 flex items-start gap-3">
                            <span className="text-rose-500">◇</span> {w}
                         </li>
@@ -229,7 +242,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                 <div className="space-y-6">
                    <h4 className="text-xl font-black text-indigo-400 border-r-4 border-indigo-400 pr-4">צד מערכתי (מנגנונים ותהליכים)</h4>
                    <div className="space-y-4">
-                      {session.analysis.recommendations.systemic.map((rec, i) => (
+                      {(analysis.recommendations?.systemic || []).map((rec, i) => (
                         <div key={i} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-zinc-800 flex items-start gap-6 group hover:border-indigo-500/40 transition-all shadow-lg">
                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 font-black text-sm flex-shrink-0">
                              {i+1}
@@ -244,7 +257,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                 <div className="space-y-6">
                    <h4 className="text-xl font-black text-purple-400 border-r-4 border-purple-400 pr-4">ציר היחסים (אמון ותקשורת)</h4>
                    <div className="space-y-4">
-                      {session.analysis.recommendations.relational.map((rec, i) => (
+                      {(analysis.recommendations?.relational || []).map((rec, i) => (
                         <div key={i} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-zinc-800 flex items-start gap-6 group hover:border-purple-500/40 transition-all shadow-lg">
                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-black text-sm flex-shrink-0">
                              {i+1}
