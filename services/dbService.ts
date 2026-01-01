@@ -18,20 +18,19 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User,
 
 const STORAGE_KEY = 'synergy_db_v3';
 
-// Reverting strictly to the pattern shown in the user's image
 const getApiKey = (): string => {
   try {
     // @ts-ignore
-    return import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
+    return import.meta.env.VITE_GEMINI_API_KEY || '';
   } catch {
-    return "";
+    return '';
   }
 };
 
 const getEnv = (key: string): string => {
   try {
     // @ts-ignore
-    return import.meta.env[key] || process.env[key] || "";
+    return import.meta.env[key] || '';
   } catch {
     return "";
   }
@@ -57,7 +56,7 @@ if (isFirebaseConfigValid) {
     db = getFirestore(app);
     auth = getAuth(app);
   } catch (e) {
-    console.warn("Firebase config exists but initialization failed:", e);
+    console.warn("Firebase initialization failed:", e);
   }
 }
 
@@ -79,88 +78,48 @@ const saveLocalSessions = (sessions: PartnershipSession[]) => {
 };
 
 export const dbService = {
-  isCloudActive(): boolean {
-    return !!db;
-  },
-
+  isCloudActive(): boolean { return !!db; },
   async loginWithGoogle(): Promise<User | null> {
     if (!auth) return null;
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      return result.user;
-    } catch (e: any) {
-      console.error("Login failed:", e);
-      return null;
-    }
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
   },
-
-  async logout(): Promise<void> {
-    if (auth) await signOut(auth);
-  },
-
+  async logout(): Promise<void> { if (auth) await signOut(auth); },
   onAuthChange(callback: (user: User | null) => void) {
-    if (!auth) {
-      callback(null);
-      return () => {};
-    }
+    if (!auth) { callback(null); return () => {}; }
     return onAuthStateChanged(auth, callback);
   },
-
   async getSessions(): Promise<PartnershipSession[]> {
     if (db) {
-      try {
-        const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const sessions = querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
-        if (sessions.length > 0) {
-          saveLocalSessions(sessions);
-          return sessions;
-        }
-      } catch (e: any) {
-        console.error("Cloud fetch failed:", e);
-      }
+      const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const sessions = querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
+      if (sessions.length > 0) { saveLocalSessions(sessions); return sessions; }
     }
     return getLocalSessions();
   },
-
   subscribeToSessions(callback: (sessions: PartnershipSession[]) => void) {
-    if (!db) {
-      callback(getLocalSessions());
-      return () => {};
-    }
+    if (!db) { callback(getLocalSessions()); return () => {}; }
     const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
       const sessions = snapshot.docs.map(doc => doc.data() as PartnershipSession);
       saveLocalSessions(sessions);
       callback(sessions);
-    }, (err) => {
-      callback(getLocalSessions());
     });
   },
-
   async saveSession(session: PartnershipSession): Promise<void> {
     const local = getLocalSessions();
     const idx = local.findIndex(s => s.id === session.id);
-    if (idx >= 0) local[idx] = session;
-    else local.push(session);
+    if (idx >= 0) local[idx] = session; else local.push(session);
     saveLocalSessions(local);
-
-    if (db) {
-      try {
-        await setDoc(doc(db, 'sessions', session.id), session);
-      } catch (e: any) {
-        console.error("Cloud save failed:", e);
-      }
-    }
+    if (db) await setDoc(doc(db, 'sessions', session.id), session);
   },
-
   async deleteSession(sessionId: string): Promise<void> {
     const local = getLocalSessions().filter(s => s.id !== sessionId);
     saveLocalSessions(local);
     if (db) await deleteDoc(doc(db, 'sessions', sessionId));
   },
-
   async addResponse(sessionId: string, response: ParticipantResponse): Promise<void> {
     const local = getLocalSessions();
     const session = local.find(s => s.id === sessionId);
@@ -170,14 +129,9 @@ export const dbService = {
       saveLocalSessions(local);
     }
     if (db) {
-      try {
-        const docRef = doc(db, 'sessions', sessionId);
-        await updateDoc(docRef, {
-          responses: arrayUnion(response)
-        });
-      } catch (e) {
-        console.error("Cloud response add failed:", e);
-      }
+      await updateDoc(doc(db, 'sessions', sessionId), {
+        responses: arrayUnion(response)
+      });
     }
   }
 };

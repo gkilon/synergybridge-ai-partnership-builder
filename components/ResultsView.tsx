@@ -22,13 +22,14 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
 
   if (!session) return null;
 
-  // 1. Prepare Aggregated Data for both Chart and AI with robust calculation
+  // 1. FIXED CALCULATION LOGIC: Ensuring Satisfaction Score is NEVER 0 if data exists
   const analysisSummary = useMemo(() => {
-    // Robust question source: use session questions if available, else fallback to constants
     const questions = (session.questions && session.questions.length > 0) ? session.questions : DEFAULT_QUESTIONS;
     
     const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION');
-    const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION');
+    // Double-check for outcome questions: By label OR by fixed methodology IDs (q23, q24)
+    const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION' || q.id === 'q23' || q.id === 'q24');
+    
     const groups = Array.from(new Set(driverQs.map(q => q.shortLabel || 'כללי')));
     
     let maxGapValue = -1;
@@ -45,7 +46,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         let sideTotal = 0, sideCount = 0;
         sideResponses.forEach(r => {
           relatedQs.forEach(q => {
-            if (r.scores[q.id]) { 
+            if (r.scores[q.id] !== undefined) { 
               sideTotal += r.scores[q.id]; sideCount++; 
               allSidesTotal += r.scores[q.id]; allSidesCount++;
             }
@@ -76,11 +77,10 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       });
     });
     
-    // Scale is 1-7. (Avg - 1) / (7 - 1) * 100 for true percentage, or just Avg / 7 * 100.
-    // Using Avg/7 * 100 as per previous logic but ensuring sCount > 0
+    // Scale is 1-7.
     const satisfactionScore = sCount > 0 ? Number(((sTotal / sCount) / 7 * 100).toFixed(0)) : 0;
 
-    return { driverData, satisfactionScore, biggestGap: maxGapValue > 0.5 ? { label: gapLabel, value: maxGapValue } : null };
+    return { driverData, satisfactionScore, biggestGap: maxGapValue > 0.3 ? { label: gapLabel, value: maxGapValue } : null };
   }, [session]);
 
   const handleAnalyze = async () => {
@@ -96,15 +96,15 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-32 max-w-[1650px] mx-auto px-4 text-right" dir="rtl">
+    <div className="space-y-6 animate-fadeIn pb-32 max-w-[1700px] mx-auto px-4 text-right" dir="rtl">
       
-      {/* HEADER: Minimalist & Clean */}
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-zinc-900 pb-6">
-        <div className="flex gap-5 items-center">
-           <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-3xl shadow-lg">🤝</div>
+        <div className="flex gap-4 items-center">
+           <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl shadow-lg">📈</div>
            <div>
-              <h2 className="text-3xl md:text-4xl font-black text-white">{session.title}</h2>
-              <p className="text-zinc-500 font-bold text-sm">ניתוח דאטה ואסטרטגיית ממשק</p>
+              <h2 className="text-3xl font-black text-white">{session.title}</h2>
+              <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Dashboard & AI Strategic Insights</p>
            </div>
         </div>
         <div className="flex gap-3 w-full md:w-auto">
@@ -114,31 +114,30 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
              disabled={loading || session.responses.length < 1}
              className={`flex-1 md:flex-none px-8 py-3 rounded-xl font-black transition-all ${loading ? 'bg-zinc-800 text-zinc-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/20'}`}
            >
-             {loading ? 'מייצר תובנות...' : '✨ ניתוח פרגמטי (AI)'}
+             {loading ? 'מנתח...' : '✨ הפק תובנות אסטרטגיות (AI)'}
            </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* RIGHT: DATA ANALYSIS (The Facts) */}
-        <div className="lg:col-span-7 space-y-6 order-1">
+        {/* RIGHT SIDE: DATA VISUALIZATION (Facts) */}
+        <div className="lg:col-span-7 space-y-6 order-1 lg:order-2">
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-             {/* OUTCOME CARD - UPDATED TO MATCH IMAGE 1 */}
-             <div className="md:col-span-2 glass rounded-[2.5rem] p-10 border-white/5 shadow-2xl min-h-[250px] flex flex-col justify-between relative overflow-hidden group">
-                <div className="flex justify-between items-start">
-                   <div className="space-y-1">
-                      <h3 className="text-2xl font-black text-white tracking-tight">סטטוס הממשק (Outcome)</h3>
-                   </div>
+             {/* OUTCOME CARD - MATCHING REQUESTED DESIGN */}
+             <div className="md:col-span-2 glass rounded-[2.5rem] p-10 border-white/5 shadow-2xl min-h-[250px] flex flex-col justify-between relative overflow-hidden">
+                <div className="flex justify-between items-start z-10">
+                   <h3 className="text-2xl font-black text-white tracking-tight">סטטוס הממשק (Outcome)</h3>
                 </div>
                 
-                <div className="mt-4 flex flex-col items-end">
-                   <div className="flex items-baseline gap-2">
-                      <span className="text-[13px] font-bold text-zinc-500 mb-1">שביעות רצון ואפקטיביות</span>
+                <div className="mt-4 flex flex-col items-end z-10">
+                   <div className="flex items-baseline gap-3">
+                      <span className="text-xs font-bold text-zinc-500 mb-1">שביעות רצון ואפקטיביות</span>
                       <span className="text-8xl font-black text-white tabular-nums leading-none">{analysisSummary.satisfactionScore}%</span>
                    </div>
                    
-                   <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mt-6">
+                   <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mt-6 border border-zinc-800">
                       <div 
                         className={`h-full transition-all duration-1000 ease-out ${analysisSummary.satisfactionScore > 75 ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
                         style={{ width: `${analysisSummary.satisfactionScore}%` }}
@@ -146,9 +145,9 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                    </div>
                 </div>
 
-                <div className="mt-8 border-t border-zinc-800 pt-6">
+                <div className="mt-8 border-t border-zinc-800/50 pt-6 z-10">
                    <p className="text-zinc-500 text-sm font-medium leading-relaxed">
-                      המדד משקלל את תחושת הערך, האפקטיביות והסיפוק של שני הצדדים. המטרה בניתוח ה-AI היא לזהות אילו מבין הדרייברים בגרף משמאל יניבו את הקפיצה הגדולה ביותר במדד זה.
+                      המדד משקלל את תחושת הערך, האפקטיביות והסיפוק של שני הצדדים. המטרה בניתוח ה-AI היא לזהות אילו מבין הדרייברים בגרף יניבו את הקפיצה הגדולה ביותר במדד זה.
                    </p>
                 </div>
              </div>
@@ -158,10 +157,10 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                   <>
                     <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-2">פער תפיסה מקסימלי</span>
                     <h4 className="text-xl font-black text-white">{analysisSummary.biggestGap.label}</h4>
-                    <p className="text-3xl font-black text-rose-400">+{analysisSummary.biggestGap.value.toFixed(1)}</p>
+                    <p className="text-4xl font-black text-rose-400">+{analysisSummary.biggestGap.value.toFixed(1)}</p>
                   </>
                 ) : (
-                  <div className="text-emerald-500 font-black text-lg">הלימה מלאה ✅</div>
+                  <div className="text-emerald-500 font-black text-lg">הלימה גבוהה ✅</div>
                 )}
              </div>
           </div>
@@ -186,65 +185,68 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
           </div>
         </div>
 
-        {/* LEFT: PRAGMATIC AI INSIGHTS (The Wisdom) */}
-        <div className="lg:col-span-5 space-y-6 order-2">
+        {/* LEFT SIDE: AI STRATEGIC ANALYSIS (Insights) */}
+        <div className="lg:col-span-5 space-y-6 order-2 lg:order-1">
           {!session.analysis ? (
-            <div className="glass rounded-[3rem] p-12 text-center border-dashed border-2 border-zinc-800 opacity-60">
-               <div className="text-4xl mb-6">🧠</div>
-               <h3 className="text-xl font-black text-white mb-4">ממתין לניתוח פרגמטי</h3>
-               <p className="text-zinc-500 text-sm leading-relaxed">ה-AI ינתח את המשמעות של הגרפים ויציע תוכנית עבודה אופרטיבית לגישור על הפערים ושיפור האפקטיביות.</p>
+            <div className="glass rounded-[3rem] p-12 text-center border-dashed border-2 border-zinc-800 opacity-50 flex flex-col items-center justify-center min-h-[500px]">
+               <div className="text-5xl mb-6">🧠</div>
+               <h3 className="text-xl font-black text-white mb-4">ממתין לניתוח שורה תחתונה</h3>
+               <p className="text-zinc-500 text-sm leading-relaxed max-w-xs">ה-AI ינתח את הגרפים מימין ויפיק תובנות אסטרטגיות על "היישות השלישית" ודרכי פעולה לשיפור הממשק.</p>
             </div>
           ) : (
             <div className="space-y-6 animate-slideDown">
-              <div className="glass rounded-[2.5rem] p-8 border-indigo-500/30 bg-indigo-500/5 relative overflow-hidden">
-                 <div className="absolute top-0 left-0 w-24 h-24 bg-indigo-500/10 blur-3xl rounded-full"></div>
-                 <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">ניתוח אסטרטגי (Summary)</h3>
-                 <p className="text-lg font-bold text-white leading-relaxed relative z-10">{session.analysis.summary}</p>
+              
+              {/* AI SUMMARY - The Bottom Line */}
+              <div className="glass rounded-[2.5rem] p-8 border-indigo-500/30 bg-indigo-500/5 relative overflow-hidden shadow-2xl">
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl rounded-full"></div>
+                 <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
+                    השורה התחתונה (AI Strategist)
+                 </h3>
+                 <p className="text-xl font-bold text-white leading-relaxed relative z-10">{session.analysis.summary}</p>
               </div>
 
+              {/* STRENGTHS / WEAKNESSES LISTS */}
               <div className="grid grid-cols-1 gap-4">
-                 <div className="glass rounded-[2rem] p-6 border-zinc-800 space-y-4">
-                    <h4 className="text-sm font-black text-emerald-400 uppercase flex items-center gap-2">
-                       <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                       נקודות חוזקה לשימור
-                    </h4>
+                 <div className="glass rounded-[2rem] p-6 border-zinc-800/50 space-y-4">
+                    <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">חוזקות ליבה</h4>
                     <div className="flex flex-wrap gap-2">
                        {[...session.analysis.strengths.systemic, ...session.analysis.strengths.relational].map((s, i) => (
-                         <span key={i} className="bg-zinc-900 border border-zinc-800 text-zinc-300 px-3 py-1.5 rounded-xl text-xs font-bold">{s}</span>
+                         <span key={i} className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold">{s}</span>
                        ))}
                     </div>
                  </div>
 
-                 <div className="glass rounded-[2rem] p-6 border-zinc-800 space-y-4">
-                    <h4 className="text-sm font-black text-rose-400 uppercase flex items-center gap-2">
-                       <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
-                       חסמים הדורשים טיפול
-                    </h4>
+                 <div className="glass rounded-[2rem] p-6 border-zinc-800/50 space-y-4">
+                    <h4 className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">חסמים מבניים</h4>
                     <div className="flex flex-wrap gap-2">
                        {[...session.analysis.weaknesses.systemic, ...session.analysis.weaknesses.relational].map((w, i) => (
-                         <span key={i} className="bg-zinc-900 border border-zinc-800 text-zinc-300 px-3 py-1.5 rounded-xl text-xs font-bold">{w}</span>
+                         <span key={i} className="bg-rose-500/10 border border-rose-500/20 text-rose-300 px-3 py-1.5 rounded-xl text-xs font-bold">{w}</span>
                        ))}
                     </div>
                  </div>
               </div>
 
-              <div className="glass rounded-[2.5rem] p-8 border-indigo-500/20 space-y-6">
+              {/* OPERATIONAL RECOMMENDATIONS */}
+              <div className="glass rounded-[2.5rem] p-8 border-indigo-500/20 space-y-6 shadow-xl">
                  <h3 className="text-xl font-black text-white flex items-center gap-3">
-                    <span className="text-indigo-500">⚡</span>
-                    המלצות לפעולה אופרטיבית
+                    <span className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-sm">💡</span>
+                    תוכנית פעולה אופרטיבית
                  </h3>
                  <div className="space-y-4">
                     {[...session.analysis.recommendations.systemic, ...session.analysis.recommendations.relational].map((rec, idx) => (
-                      <div key={idx} className="bg-zinc-950 p-5 rounded-2xl border border-zinc-900 flex gap-4 items-start hover:border-indigo-500/40 transition-all group">
-                        <span className="bg-indigo-600 text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-lg group-hover:scale-110 transition-transform">{idx+1}</span>
-                        <p className="text-sm font-bold text-zinc-200 leading-relaxed">{rec}</p>
+                      <div key={idx} className="bg-zinc-950/50 p-5 rounded-2xl border border-zinc-900 flex gap-4 items-start hover:border-indigo-500/40 transition-all group">
+                        <span className="bg-indigo-600 text-white w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5 shadow-lg group-hover:scale-110 transition-transform">{idx+1}</span>
+                        <p className="text-sm font-bold text-zinc-300 leading-relaxed">{rec}</p>
                       </div>
                     ))}
                  </div>
               </div>
+
             </div>
           )}
         </div>
+
       </div>
     </div>
   );

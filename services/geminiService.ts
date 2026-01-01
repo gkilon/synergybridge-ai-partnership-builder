@@ -3,11 +3,10 @@ import { GoogleGenAI } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
-// Reverting to the requested pattern for API Key retrieval
 const getApiKey = (): string => {
   try {
     // @ts-ignore
-    return import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
+    return import.meta.env.VITE_GEMINI_API_KEY || "";
   } catch {
     return "";
   }
@@ -15,31 +14,34 @@ const getApiKey = (): string => {
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
   const apiKey = getApiKey();
+  if (!apiKey) throw new Error("מפתח API חסר. וודא הגדרות VITE_GEMINI_API_KEY.");
+  
   const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
-    תפקיד: יועץ אסטרטגי בכיר לממשקים ארגוניים.
-    משימה: קח את ניתוח התוצאות הקיימות לרמה פרגמטית ועמוקה יותר.
+    תפקיד: יועץ אסטרטגי בכיר המתמחה בממשקים ארגוניים.
+    משימה: ניתוח נוקב ופרגמטי של ממשק עבודה על בסיס נתונים קיימים.
     
     מתודולוגיה: ${PARTNERSHIP_METHODOLOGY}
     
-    ניתוח הנתונים המצטבר:
-    - מדד שביעות רצון ואפקטיביות: ${aggregatedData.satisfactionScore}%
+    נתוני הניתוח המצטברים:
+    - סטטוס הממשק (שביעות רצון ואפקטיביות): ${aggregatedData.satisfactionScore}%
     - ביצועי דרייברים (1-7): ${JSON.stringify(aggregatedData.driverData)}
-    - פער התפיסה הכי גדול: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} בפער של ${aggregatedData.biggestGap.value} נקודות` : 'אין פערים משמעותיים'}
+    - פער תפיסה מקסימלי: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (${aggregatedData.biggestGap.value} נקודות)` : 'אין פערים מהותיים'}
     - הקשר הממשק: ${session.context || 'לא צוין'}
 
-    הנחיות לביצוע (פרגמטיות):
-    1. אל תציין "שאלה x" או נתונים מספריים יבשים - המשתמש כבר רואה אותם בגרף.
-    2. נתח מה "מעכב" את הממשק מלהגיע ל-100% שביעות רצון על בסיס פערים ודרייברים חלשים.
-    3. תן המלצות אופרטיביות שניתן לבצע בפגישת העבודה הבאה בין הצדדים.
+    הנחיות קשיחות:
+    1. אל תחזור על המספרים. המשתמש כבר רואה אותם בגרפים.
+    2. אל תשתמש במזהי שאלות (q1, q2...).
+    3. תן את ה"שורה התחתונה" (The Bottom Line) - מה הבעיה השורשית ואיך פותרים אותה.
+    4. המלצות צריכות להיות כאלו שניתן לבצע בפגישה הקרובה בין הצדדים.
 
-    החזר JSON:
+    החזר JSON במבנה:
     {
       "strengths": { "systemic": [], "relational": [] },
       "weaknesses": { "systemic": [], "relational": [] },
       "recommendations": { "systemic": [], "relational": [] },
-      "summary": "סיכום אסטרטגי נוקב ופרגמטי על הבעיה המבנית והפתרון המוצע."
+      "summary": "ניתוח קצר (עד 4 שורות) המזהה את החסם המרכזי ונותן כיוון פעולה אסטרטגי."
     }
   `;
 
@@ -47,11 +49,15 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        temperature: 0.5
+      }
     });
-    return JSON.parse(response.text || "{}");
+    const jsonStr = response.text?.trim() || "{}";
+    return JSON.parse(jsonStr);
   } catch (error) {
     console.error("AI Analysis failed:", error);
-    throw new Error("המערכת נכשלה ביצירת תובנות. וודא שמפתח ה-API תקין.");
+    throw new Error("המערכת נכשלה ביצירת התובנות. וודא שמפתח ה-API תקין ופעיל.");
   }
 };
