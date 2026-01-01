@@ -1,36 +1,15 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
-import { ANALYSIS_PROMPT_TEMPLATE, PARTNERSHIP_METHODOLOGY } from "../constants";
-
-/**
- * Helper to get API key from available environment providers
- */
-const getApiKey = () => {
-  try {
-    // Attempt to use the user's specific Vite environment variable first
-    // as requested to fix their specific environment access issue.
-    // @ts-ignore
-    return import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || '';
-  } catch {
-    return process.env.API_KEY || '';
-  }
-};
+import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
 /**
  * Analyzes the partnership data using the Gemini AI model.
  * Behaves as a world-class organizational consultant.
  */
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  const apiKey = getApiKey();
-  
-  if (!apiKey) {
-    console.error("API_KEY is missing from environment variables.");
-    throw new Error("AUTH_ERROR");
-  }
-
-  // Always create a new instance inside the function call
-  const ai = new GoogleGenAI({ apiKey });
+  // Always use process.env.API_KEY directly when initializing.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const formattedData = {
     title: session.title,
@@ -51,21 +30,30 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
 
     ---
     
-    ${ANALYSIS_PROMPT_TEMPLATE}
-    
     נתוני הממשק והקשר ארגוני לניתוח:
     ${JSON.stringify(formattedData, null, 2)}
 
     הנחיות קריטיות לניתוח מעמיק: 
-    1. ניתוח דמוי רגרסיה: השתמש בשאלות 23-24 (אפקטיביות ושביעות רצון) כציר הייחוס. זהה איזה מבין 6 האשכולות (אג'נדה, תפקידים, החלטות, תהליכים, כבוד, תקשורת) הוא ה-Influencer המובהק ביותר על הצלחת הממשק הזה.
-    2. "היישות השלישית": אל תסתפק בניתוח צד א' וצד ב'. נתח את הדינמיקה שנוצרת ביניהם כמרחב נפרד.
-    3. עומק אסטרטגי: ספק תובנות שנוגעות למבנה הכוח, פערים בתפיסת התפקיד והשפעת היחסים על השגת המשימה.
-    4. זיהוי ה-Key Driver: בסיכום המנהלים, ציין במפורש מהו "המפתח" (הגורם היחיד שאם נזיז אותו, כל השאר ישתפר).
+    1. איסור אזכור מזהים טכניים: בשום פנים ואופן אין לציין מספרי שאלות (כמו q1, q2 וכו') או שמות משתנים טכניים בדוח. השתמש בשפה עסקית/ייעוצית בלבד.
+    2. ניתוח דמוי רגרסיה: השתמש במדדי התוצאה כציר הייחוס. זהה איזה מבין 6 האשכולות (אג'נדה, תפקידים, החלטות, תהליכים, כבוד, תקשורת) הוא ה-Influencer המובהק ביותר.
+    3. "היישות השלישית": נתח את הדינמיקה שנוצרת בין הצדדים כמרחב נפרד.
+    4. חלוקת המלצות: חלק את ההמלצות באופן ברור ל"צד מערכתי" (תהליכים, הגדרות, מנגנונים) ול"ציר היחסים" (אמון, תקשורת, כבוד).
+
+    דרישות הפלט (JSON בלבד):
+    {
+      "strengths": { "systemic": ["..."], "relational": ["..."] },
+      "weaknesses": { "systemic": ["..."], "relational": ["..."] },
+      "recommendations": {
+         "systemic": ["3-4 המלצות קונקרטיות לצד המערכתי"],
+         "relational": ["3-4 המלצות קונקרטיות לציר היחסים"]
+      },
+      "summary": "סיכום אסטרטגי עמוק ומקיף הכולל זיהוי ה-Key Driver (ללא אזכור q1/q2)."
+    }
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -88,13 +76,17 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
               },
               required: ['systemic', 'relational']
             },
-            operationalRecommendations: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
+            recommendations: {
+              type: Type.OBJECT,
+              properties: {
+                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
+                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ['systemic', 'relational']
             },
-            summary: { type: Type.STRING, description: "ניתוח אסטרטגי עמוק ומקיף הכולל זיהוי ה-Key Driver." }
+            summary: { type: Type.STRING }
           },
-          required: ['strengths', 'weaknesses', 'operationalRecommendations', 'summary']
+          required: ['strengths', 'weaknesses', 'recommendations', 'summary']
         }
       }
     });

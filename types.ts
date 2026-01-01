@@ -42,6 +42,9 @@ export interface AIAnalysis {
     systemic: string[];
     relational: string[];
   };
-  operationalRecommendations: string[];
+  recommendations: {
+    systemic: string[];
+    relational: string[];
+  };
   summary: string;
 }

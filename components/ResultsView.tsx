@@ -96,10 +96,10 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
 
   const overallHealthMeta = useMemo(() => {
     const score = (globalOutcomeData / 7) * 100;
-    if (score >= 80) return { label: 'שותפות מעולה', color: 'text-emerald-400', bg: 'bg-emerald-400/10', icon: '💎', desc: 'הממשק פועל ברמת סנכרון ושותפות יוצאת דופן.' };
-    if (score >= 60) return { label: 'ממשק טוב', color: 'text-indigo-400', bg: 'bg-indigo-400/10', icon: '✅', desc: 'יש בסיס עבודה בריא עם מרחב לשיפור ביצועים.' };
-    if (score >= 35) return { label: 'יש עוד מה לעבוד', color: 'text-amber-400', bg: 'bg-amber-400/10', icon: '⚠️', desc: 'נדרשת השקעה ממוקדת בבניית הממשק והאמון.' };
-    return { label: 'ממשק טעון שיפור', color: 'text-rose-400', bg: 'bg-rose-400/10', icon: '🚨', desc: 'קיימים חסמים קריטיים המעכבים את הפעילות המשותפת.' };
+    if (score >= 80) return { label: 'שותפות אסטרטגית מסונכרנת', color: 'text-emerald-400', bg: 'bg-emerald-400/10', icon: '💎', desc: 'הממשק פועל ברמת סנכרון ושותפות יוצאת דופן.' };
+    if (score >= 60) return { label: 'בסיס עבודה יציב ומקצועי', color: 'text-indigo-400', bg: 'bg-indigo-400/10', icon: '✅', desc: 'יש בסיס עבודה בריא עם מרחב לשיפור ביצועים.' };
+    if (score >= 35) return { label: 'נדרשת התערבות ממוקדת', color: 'text-amber-400', bg: 'bg-amber-400/10', icon: '⚠️', desc: 'נדרשת השקעה ממוקדת בבניית הממשק והאמון.' };
+    return { label: 'כשל מערכתי בממשק', color: 'text-rose-400', bg: 'bg-rose-400/10', icon: '🚨', desc: 'קיימים חסמים קריטיים המעכבים את הפעילות המשותפת.' };
   }, [globalOutcomeData]);
 
   const perceptionGapMeta = useMemo(() => {
@@ -142,7 +142,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
               <span className="text-6xl">{overallHealthMeta.icon}</span>
            </div>
            <div className="space-y-4 relative z-10">
-              <h3 className={`text-4xl font-black tracking-tight ${overallHealthMeta.color}`}>{overallHealthMeta.label}</h3>
+              <h3 className={`text-2xl font-black tracking-tight ${overallHealthMeta.color}`}>{overallHealthMeta.label}</h3>
               <p className="text-sm text-zinc-400 font-medium leading-relaxed max-w-[220px] mx-auto">{overallHealthMeta.desc}</p>
            </div>
         </div>
@@ -183,14 +183,14 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       {session.analysis && (
         <div className="space-y-12 animate-slideUp">
           <div className="flex items-center gap-6">
-             <span className="text-3xl font-black text-white tracking-tight whitespace-nowrap underline decoration-indigo-500 decoration-4 underline-offset-8">ניתוח המומחה (AI Senior Consultant)</span>
+             <span className="text-3xl font-black text-white tracking-tight whitespace-nowrap underline decoration-indigo-500 decoration-4 underline-offset-8">ניתוח המומחה (AI Strategic Insight)</span>
              <div className="h-px bg-zinc-800 flex-grow"></div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
              <div className="md:col-span-2 glass rounded-[4rem] p-16 border-indigo-500/20 shadow-4xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 text-zinc-900 font-black text-9xl opacity-10 pointer-events-none">"</div>
-                <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mb-10">Strategic Narrative & Impact Analysis</h4>
+                <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mb-10">תובנות עומק וניתוח השפעה</h4>
                 <div className="space-y-8">
                    {session.analysis.summary.split('\n').map((p, i) => (
                      <p key={i} className="text-2xl font-bold text-zinc-200 leading-snug tracking-tight">{p}</p>
@@ -200,9 +200,9 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
              
              <div className="space-y-8">
                 <div className="glass rounded-[3rem] p-10 border-emerald-500/10">
-                   <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-6">חוזקות מערכתיות</h4>
+                   <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-6">חוזקות (מערכתי ויחסים)</h4>
                    <ul className="space-y-4">
-                      {session.analysis.strengths.systemic.map((s, i) => (
+                      {session.analysis.strengths.systemic.concat(session.analysis.strengths.relational).map((s, i) => (
                         <li key={i} className="text-sm font-bold text-zinc-300 flex items-start gap-3">
                            <span className="text-emerald-500">◆</span> {s}
                         </li>
@@ -210,9 +210,9 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                    </ul>
                 </div>
                 <div className="glass rounded-[3rem] p-10 border-rose-500/10">
-                   <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-6">חסמים לטיפול</h4>
+                   <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-6">חסמים ונקודות תורפה</h4>
                    <ul className="space-y-4">
-                      {session.analysis.weaknesses.systemic.map((w, i) => (
+                      {session.analysis.weaknesses.systemic.concat(session.analysis.weaknesses.relational).map((w, i) => (
                         <li key={i} className="text-sm font-bold text-zinc-300 flex items-start gap-3">
                            <span className="text-rose-500">◇</span> {w}
                         </li>
@@ -223,16 +223,37 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
           </div>
 
           <div className="space-y-10 pt-10">
-             <h3 className="text-4xl font-black text-white tracking-tighter">תוכנית פעולה אופרטיבית</h3>
-             <div className="grid grid-cols-1 gap-6">
-                {session.analysis.operationalRecommendations.map((rec, i) => (
-                  <div key={i} className="bg-zinc-900/60 p-10 rounded-[3rem] border border-zinc-800 flex items-start gap-12 group hover:border-indigo-500/40 transition-all shadow-xl">
-                     <div className="w-16 h-16 rounded-[2rem] bg-indigo-500/10 flex items-center justify-center text-indigo-500 font-black text-2xl flex-shrink-0 group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-inner">
-                       {i+1}
-                     </div>
-                     <p className="text-2xl font-bold text-zinc-100 leading-snug tracking-tight py-2">{rec}</p>
-                  </div>
-                ))}
+             <h3 className="text-4xl font-black text-white tracking-tighter">המלצות לשיפור הממשק</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                {/* Systemic Recommendations */}
+                <div className="space-y-6">
+                   <h4 className="text-xl font-black text-indigo-400 border-r-4 border-indigo-400 pr-4">צד מערכתי (מנגנונים ותהליכים)</h4>
+                   <div className="space-y-4">
+                      {session.analysis.recommendations.systemic.map((rec, i) => (
+                        <div key={i} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-zinc-800 flex items-start gap-6 group hover:border-indigo-500/40 transition-all shadow-lg">
+                           <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 font-black text-sm flex-shrink-0">
+                             {i+1}
+                           </div>
+                           <p className="text-lg font-bold text-zinc-100 leading-snug">{rec}</p>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+
+                {/* Relational Recommendations */}
+                <div className="space-y-6">
+                   <h4 className="text-xl font-black text-purple-400 border-r-4 border-purple-400 pr-4">ציר היחסים (אמון ותקשורת)</h4>
+                   <div className="space-y-4">
+                      {session.analysis.recommendations.relational.map((rec, i) => (
+                        <div key={i} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-zinc-800 flex items-start gap-6 group hover:border-purple-500/40 transition-all shadow-lg">
+                           <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-black text-sm flex-shrink-0">
+                             {i+1}
+                           </div>
+                           <p className="text-lg font-bold text-zinc-100 leading-snug">{rec}</p>
+                        </div>
+                      ))}
+                   </div>
+                </div>
              </div> 
           </div>
         </div>

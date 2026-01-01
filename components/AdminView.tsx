@@ -175,7 +175,8 @@ const AdminView: React.FC<AdminViewProps> = ({ sessions, onCreateSession, onUpda
                   המלצות אופרטיביות לפעולה
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {session.analysis.operationalRecommendations.map((rec, idx) => (
+                  {/* Fixed property name from operationalRecommendations to recommendations and handled systemic/relational structure */}
+                  {session.analysis.recommendations.systemic.concat(session.analysis.recommendations.relational).map((rec, idx) => (
                     <div key={idx} className="bg-white/10 p-3 rounded border border-white/20 flex gap-3">
                       <span className="font-bold text-indigo-300">{idx + 1}.</span>
                       <p className="text-sm">{rec}</p>
