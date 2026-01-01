@@ -14,34 +14,33 @@ const getApiKey = (): string => {
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("מפתח API חסר. וודא הגדרות VITE_GEMINI_API_KEY.");
+  if (!apiKey) throw new Error("מפתח API חסר.");
   
   const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
-    תפקיד: יועץ אסטרטגי בכיר המתמחה בממשקים ארגוניים.
-    משימה: ניתוח נוקב ופרגמטי של ממשק עבודה על בסיס נתונים קיימים.
+    תפקיד: יועץ ניהולי בכיר. 
+    משימה: אבחון ממשק עבודה ארגוני.
     
-    מתודולוגיה: ${PARTNERSHIP_METHODOLOGY}
-    
-    נתוני הניתוח המצטברים:
-    - סטטוס הממשק (שביעות רצון ואפקטיביות): ${aggregatedData.satisfactionScore}%
-    - ביצועי דרייברים (1-7): ${JSON.stringify(aggregatedData.driverData)}
-    - פער תפיסה מקסימלי: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (${aggregatedData.biggestGap.value} נקודות)` : 'אין פערים מהותיים'}
-    - הקשר הממשק: ${session.context || 'לא צוין'}
+    נתונים:
+    - מדד הצלחה (Outcome): ${aggregatedData.satisfactionScore}%
+    - ביצועי דרייברים: ${JSON.stringify(aggregatedData.driverData)}
+    - פער תפיסה: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (${aggregatedData.biggestGap.value})` : 'אין פערים חריגים'}
 
-    הנחיות קשיחות:
-    1. אל תחזור על המספרים. המשתמש כבר רואה אותם בגרפים.
-    2. אל תשתמש במזהי שאלות (q1, q2...).
-    3. תן את ה"שורה התחתונה" (The Bottom Line) - מה הבעיה השורשית ואיך פותרים אותה.
-    4. המלצות צריכות להיות כאלו שניתן לבצע בפגישה הקרובה בין הצדדים.
+    הנחיות:
+    1. דבר בגובה העיניים, שפה ניהולית פרקטית.
+    2. הימנע ממושגים תיאורטיים (כמו "היישות השלישית").
+    3. התמקד ב"למה זה קורה" ו"מה עושים מחר בבוקר".
 
-    החזר JSON במבנה:
+    החזר JSON:
     {
+      "summary": "אבחון המצב ב-3 משפטים חדים.",
+      "recommendations": {
+        "systemic": ["המלצה מבנית 1", "המלצה מבנית 2"],
+        "relational": ["המלצה בינאישית 1", "המלצה בינאישית 2"]
+      },
       "strengths": { "systemic": [], "relational": [] },
-      "weaknesses": { "systemic": [], "relational": [] },
-      "recommendations": { "systemic": [], "relational": [] },
-      "summary": "ניתוח קצר (עד 4 שורות) המזהה את החסם המרכזי ונותן כיוון פעולה אסטרטגי."
+      "weaknesses": { "systemic": [], "relational": [] }
     }
   `;
 
@@ -49,15 +48,39 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
-      config: { 
-        responseMimeType: "application/json",
-        temperature: 0.5
-      }
+      config: { responseMimeType: "application/json", temperature: 0.4 }
     });
-    const jsonStr = response.text?.trim() || "{}";
-    return JSON.parse(jsonStr);
+    return JSON.parse(response.text?.trim() || "{}");
   } catch (error) {
-    console.error("AI Analysis failed:", error);
-    throw new Error("המערכת נכשלה ביצירת התובנות. וודא שמפתח ה-API תקין ופעיל.");
+    throw new Error("ניתוח AI נכשל.");
+  }
+};
+
+export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
+  const apiKey = getApiKey();
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const prompt = `
+    הפוך את ההמלצה הניהולית הבאה לצעדים אופרטיביים ברורים בשטח:
+    המלצה: "${recommendation}"
+    הקשר הממשק: "${context}"
+    
+    דרישות:
+    - 3-4 צעדים קונקרטיים.
+    - שפה של "עשה".
+    - בלי תיאוריה, רק ביצוע.
+    
+    החזר רשימת JSON של מחרוזות.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    return JSON.parse(response.text?.trim() || "[]");
+  } catch {
+    return ["לא הצלחנו לפרט את ההמלצה כרגע."];
   }
 };
