@@ -8,6 +8,7 @@ import {
   setDoc, 
   doc, 
   updateDoc, 
+  deleteDoc,
   arrayUnion, 
   query,
   orderBy,
@@ -156,6 +157,19 @@ export const dbService = {
         if (e.code === 'permission-denied') {
           alert("שגיאה: אין הרשאות כתיבה לענן. יש לעדכן את ה-Rules ב-Firebase.");
         }
+      }
+    }
+  },
+
+  async deleteSession(sessionId: string): Promise<void> {
+    const local = getLocalSessions().filter(s => s.id !== sessionId);
+    saveLocalSessions(local);
+
+    if (db) {
+      try {
+        await deleteDoc(doc(db, 'sessions', sessionId));
+      } catch (e) {
+        console.error("Cloud delete failed:", e);
       }
     }
   },

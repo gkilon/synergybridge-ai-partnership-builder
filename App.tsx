@@ -69,6 +69,12 @@ const App: React.FC = () => {
     await dbService.saveSession(updated);
   };
 
+  const handleDeleteSession = async (id: string) => {
+    if (window.confirm('האם אתה בטוח שברצונך למחוק ממשק זה? כל הנתונים והמענים ימחקו לצמיתות.')) {
+      await dbService.deleteSession(id);
+    }
+  };
+
   const submitResponse = async (sid: string, response: ParticipantResponse) => {
     await dbService.addResponse(sid, response);
   };
@@ -139,6 +145,7 @@ const App: React.FC = () => {
             sessions={sessions} 
             onOpenSettings={openSettings}
             onOpenResults={openResults}
+            onDelete={handleDeleteSession}
           />
         )}
         
@@ -150,6 +157,7 @@ const App: React.FC = () => {
             initialEditingId={view.selectedId}
             forceShowAdd={true}
             onCancel={goToAdmin}
+            onDelete={handleDeleteSession}
           />
         )}
 

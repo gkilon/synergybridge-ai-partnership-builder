@@ -11,13 +11,14 @@ interface Props {
   onUpdate?: (updated: PartnershipSession) => void;
   onOpenSettings?: (id: string) => void;
   onOpenResults?: (id: string) => void;
+  onDelete?: (id: string) => void;
   initialEditingId?: string | null;
   forceShowAdd?: boolean;
   onCancel?: () => void;
 }
 
 const AdminDashboard: React.FC<Props> = ({ 
-  sessions, onAdd, onUpdate, onOpenSettings, onOpenResults, 
+  sessions, onAdd, onUpdate, onOpenSettings, onOpenResults, onDelete,
   initialEditingId, forceShowAdd, onCancel 
 }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -122,7 +123,7 @@ const AdminDashboard: React.FC<Props> = ({
 
           <div className="space-y-6 pt-6 border-t border-zinc-800">
              <div className="flex justify-between items-center">
-                <label className="text-xl font-black text-white">מבנה השאלון (16 פרמטרים)</label>
+                <label className="text-xl font-black text-white">מבנה השאלון</label>
                 <button 
                   onClick={() => setEditingQuestions([...editingQuestions, { id: Date.now().toString(), text: 'שאלה חדשה', shortLabel: 'פרמטר', category: Category.SYSTEMIC }])}
                   className="text-xs font-black bg-indigo-500/10 text-indigo-400 px-4 py-2 rounded-xl border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all"
@@ -229,9 +230,14 @@ const AdminDashboard: React.FC<Props> = ({
                    <span className="text-4xl font-black text-white">{session.responses.length}</span>
                    <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">מענים שנאספו</span>
                 </div>
-                <button onClick={() => onOpenSettings?.(session.id)} className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all border border-zinc-800">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => onDelete?.(session.id)} className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-700 hover:text-rose-500 hover:bg-zinc-800 transition-all border border-zinc-800">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                  <button onClick={() => onOpenSettings?.(session.id)} className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all border border-zinc-800">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                  </button>
+                </div>
              </div>
              
              <div className="flex-grow mb-10 relative z-10">

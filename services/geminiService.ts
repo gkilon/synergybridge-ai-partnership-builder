@@ -4,11 +4,25 @@ import { PartnershipSession, AIAnalysis } from "../types";
 import { ANALYSIS_PROMPT_TEMPLATE, PARTNERSHIP_METHODOLOGY } from "../constants";
 
 /**
+ * Helper to get API key from available environment providers
+ */
+const getApiKey = () => {
+  try {
+    // Attempt to use the user's specific Vite environment variable first
+    // as requested in the screenshot to fix their access issue.
+    // @ts-ignore
+    return import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || '';
+  } catch {
+    return process.env.API_KEY || '';
+  }
+};
+
+/**
  * Analyzes the partnership data using the Gemini AI model.
  * Strictly follows the @google/genai coding guidelines.
  */
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = getApiKey();
   
   if (!apiKey) {
     console.error("API_KEY is missing from environment variables.");
