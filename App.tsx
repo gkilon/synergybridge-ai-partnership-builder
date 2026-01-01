@@ -21,7 +21,7 @@ const App: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // סנכרון נתונים בזמן אמת מהענן
+  // Sync data from cloud
   useEffect(() => {
     let unsubscribe = () => {};
     
@@ -30,20 +30,32 @@ const App: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const sid = params.get('sid');
       
-      // האזנה לשינויים ב-Firebase
-      unsubscribe = dbService.subscribeToSessions((updatedSessions) => {
-        setSessions(updatedSessions);
+      // Safety timeout: if cloud fetch takes more than 5s, continue anyway
+      const timeout = setTimeout(() => {
+        if (isLoading) setIsLoading(false);
+      }, 5000);
+
+      try {
+        // Listen to Firebase
+        unsubscribe = dbService.subscribeToSessions((updatedSessions) => {
+          setSessions(updatedSessions);
+          setIsLoading(false);
+          clearTimeout(timeout);
+        });
+
+        // Initial fetch
+        const initial = await dbService.getSessions();
+        if (initial) setSessions(initial);
+
+        if (sid) {
+          setView(prev => ({ ...prev, main: 'survey', selectedId: sid }));
+        }
+      } catch (err) {
+        console.error("Sync setup failed", err);
+      } finally {
         setIsLoading(false);
-      });
-
-      // טעינה ראשונית
-      const initial = await dbService.getSessions();
-      setSessions(initial);
-
-      if (sid) {
-        setView({ main: 'survey', adminTab: 'list', selectedId: sid });
+        clearTimeout(timeout);
       }
-      setIsLoading(false);
     };
 
     setupSync();
@@ -70,7 +82,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteSession = async (id: string) => {
-    if (window.confirm('האם אתה בטוח שברצונך למחוק ממשק זה? כל הנתונים והמענים ימחקו לצמיתות.')) {
+    if (window.confirm('האם אתה בטוח שברצונך למחוק ממשק זה?')) {
       await dbService.deleteSession(id);
     }
   };
@@ -101,7 +113,7 @@ const App: React.FC = () => {
           <div className="w-16 h-16 border-4 border-indigo-500/20 rounded-full"></div>
           <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
         </div>
-        <p className="text-zinc-500 font-bold animate-pulse tracking-widest text-sm uppercase">SynergyBridge Syncing...</p>
+        <p className="text-zinc-500 font-bold animate-pulse tracking-widest text-[10px] uppercase">Initiating SynergyBridge...</p>
       </div>
     );
   }
@@ -127,13 +139,13 @@ const App: React.FC = () => {
               onClick={goToAdmin}
               className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${view.adminTab === 'list' ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
             >
-              ממשקים פעילים
+              ממשקים
             </button>
             <button 
               onClick={() => openSettings()}
               className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${view.adminTab === 'settings' && !view.selectedId ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
             >
-              + ממשק חדש
+              + חדש
             </button>
           </div>
         </div>
