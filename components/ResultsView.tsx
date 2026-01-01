@@ -15,7 +15,6 @@ const SIDE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   const [loading, setLoading] = useState(false);
 
-  // Safety guard for missing session
   if (!session) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center space-y-6 animate-fadeIn">
@@ -36,9 +35,6 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     } catch (e: any) {
       if (e.message === "AUTH_ERROR") {
         alert("שגיאת הרשאה: וודא שהגדרת VITE_GEMINI_API_KEY תקין בסביבת העבודה.");
-        if (typeof (window as any).aistudio?.openSelectKey === 'function') {
-          await (window as any).aistudio.openSelectKey();
-        }
       } else {
         alert(e.message || "חלה שגיאה בחיבור למערכת הניתוח");
       }
@@ -47,15 +43,26 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     }
   };
 
-  // Safe chart data calculation and detailed component stats
-  const { chartData, componentStats } = useMemo(() => {
-    if (!session.questions || session.questions.length === 0) return { chartData: [], componentStats: [] };
+  // Merged Outcomes and Grouped Stats
+  const { componentStats, criticalGaps } = useMemo(() => {
+    if (!session.questions || session.questions.length === 0) return { componentStats: [], criticalGaps: [] };
     
+    // Identify Outcome questions to merge them
+    const outcomeLabels = ["אפקטיביות גלובלית", "שביעות רצון"];
     const groups = Array.from(new Set(session.questions.map(q => q.shortLabel || 'כללי')));
     
-    const calculatedData = groups.map(label => {
+    // Create actual labels to iterate, merging outcomes
+    const labelsToProcess = groups.filter(g => !outcomeLabels.includes(g));
+    labelsToProcess.push("שביעות רצון ותוצאות");
+
+    const calculatedData = labelsToProcess.map(label => {
       const dataPoint: any = { subject: label };
-      const relatedQuestions = session.questions.filter(q => (q.shortLabel || 'כללי') === label);
+      const relatedQuestions = session.questions.filter(q => {
+        if (label === "שביעות רצון ותוצאות") return outcomeLabels.includes(q.shortLabel || "");
+        return (q.shortLabel || 'כללי') === label;
+      });
+
+      if (relatedQuestions.length === 0) return null;
 
       let totalGlobal = 0;
       let countGlobal = 0;
@@ -85,247 +92,202 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       const totalAvg = countGlobal > 0 ? Number((totalGlobal / countGlobal).toFixed(1)) : 0;
       dataPoint.average = totalAvg;
 
-      // Calculate gap if there are at least 2 sides
       let gap = 0;
       if (session.sides.length >= 2) {
         const vals = session.sides.map(s => sideAverages[s]);
         gap = Number((Math.max(...vals) - Math.min(...vals)).toFixed(1));
       }
 
-      return {
-        ...dataPoint,
-        totalAvg,
-        gap
-      };
-    });
+      return { ...dataPoint, totalAvg, gap };
+    }).filter(Boolean) as any[];
 
-    // Sort stats from highest average to lowest
-    const stats = [...calculatedData].sort((a, b) => b.totalAvg - a.totalAvg);
+    const sortedStats = [...calculatedData].sort((a, b) => b.totalAvg - a.totalAvg);
+    const gaps = sortedStats.filter(s => s.gap >= 1.2).sort((a, b) => b.gap - a.gap);
 
-    return { chartData: calculatedData, componentStats: stats };
-  }, [session]);
-
-  const globalOutcomeScore = useMemo(() => {
-    const outcomeQs = session.questions.filter(q => 
-      q.text.includes('אפקטיביות') || q.text.includes('שביעות רצון') || q.id === 'q23' || q.id === 'q24'
-    );
-    if (outcomeQs.length === 0) return 0;
-    
-    let total = 0;
-    let count = 0;
-    session.responses.forEach(r => {
-      outcomeQs.forEach(q => {
-        if (r.scores && r.scores[q.id] !== undefined) {
-          total += r.scores[q.id];
-          count++;
-        }
-      });
-    });
-    return count > 0 ? (total / count) : 0;
+    return { componentStats: sortedStats, criticalGaps: gaps };
   }, [session]);
 
   const healthIndicator = useMemo(() => {
-    const s = (globalOutcomeScore / 7) * 100;
-    if (s >= 85) return { label: 'שותפות אסטרטגית מופתית', color: 'text-emerald-400', bg: 'bg-emerald-400/10', icon: '💎', desc: 'הממשק מתפקד בסנכרון מלא וערך מוסף גבוה מאוד.' };
-    if (s >= 65) return { label: 'ממשק עבודה יציב', color: 'text-indigo-400', bg: 'bg-indigo-400/10', icon: '✅', desc: 'בסיס עבודה בריא המאפשר השגת תוצאות בשגרה.' };
-    if (s >= 40) return { label: 'ממשק תפעולי בסיסי', color: 'text-amber-400', bg: 'bg-amber-400/10', icon: '⚠️', desc: 'ישנם חסמים המונעים מהשותפות להפוך לאסטרטגית.' };
-    return { label: 'שותפות בשבר תפקודי', color: 'text-rose-400', bg: 'bg-rose-400/10', icon: '🚨', desc: 'נדרשת התערבות ניהולית מיידית לשיקום הממשק.' };
-  }, [globalOutcomeScore]);
+    const outcome = componentStats.find(s => s.subject === "שביעות רצון ותוצאות");
+    const score = outcome ? (outcome.totalAvg / 7) * 100 : 0;
+    
+    if (score >= 85) return { label: 'שותפות מופתית', color: 'text-emerald-400', bg: 'bg-emerald-400/10', icon: '💎' };
+    if (score >= 65) return { label: 'ממשק יציב', color: 'text-indigo-400', bg: 'bg-indigo-400/10', icon: '✅' };
+    if (score >= 40) return { label: 'ממשק בסיסי', color: 'text-amber-400', bg: 'bg-amber-400/10', icon: '⚠️' };
+    return { label: 'שותפות בשבר', color: 'text-rose-400', bg: 'bg-rose-400/10', icon: '🚨' };
+  }, [componentStats]);
 
   const analysis = session.analysis;
 
   return (
-    <div className="space-y-12 animate-fadeIn pb-32 max-w-7xl mx-auto px-4 md:px-0 text-right" dir="rtl">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
-        <div>
-          <button onClick={onBack} className="text-zinc-500 hover:text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 mb-4 group transition-colors">
-             <span className="group-hover:-translate-x-1 transition-transform">←</span> חזרה לממשקים
-          </button>
-          <h2 className="text-5xl font-black text-white tracking-tighter leading-none">{session.title}</h2>
-          <p className="text-zinc-500 mt-2 font-bold text-lg">דוח אבחון מבוסס בינה מלאכותית | Partnership Intel</p>
-        </div>
-        <button 
-          disabled={session.responses.length < 1 || loading}
-          onClick={handleAnalyze}
-          className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white px-10 py-5 rounded-3xl font-black transition-all shadow-3xl shadow-indigo-600/20 active:scale-95 flex items-center gap-4 text-lg border border-indigo-400/30"
-        >
-          {loading ? <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : '✨ הפק ניתוח AI'}
-        </button>
-      </div>
-
-      {/* Health & Chart Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* Health Summary Card */}
-        <div className="md:col-span-4 glass rounded-[3rem] p-12 flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden group border-indigo-500/10 shadow-2xl">
-           <h4 className="text-zinc-500 font-black text-[10px] uppercase tracking-[0.3em] relative z-10">דירוג חוסן הממשק</h4>
-           <div className={`w-44 h-44 rounded-full flex items-center justify-center relative z-10 ${healthIndicator.bg} border border-white/5 shadow-2xl transition-all group-hover:scale-105 duration-700`}>
-              <span className="text-6xl">{healthIndicator.icon}</span>
-           </div>
-           <div className="space-y-4 relative z-10">
-              <h3 className={`text-2xl font-black tracking-tight ${healthIndicator.color}`}>{healthIndicator.label}</h3>
-              <p className="text-sm text-zinc-400 font-medium leading-relaxed max-w-[220px] mx-auto">{healthIndicator.desc}</p>
-           </div>
-        </div>
-
-        {/* Diagnostic Radar Chart */}
-        <div className="md:col-span-8 glass rounded-[3rem] p-10 min-h-[450px] flex flex-col relative group border-white/5 shadow-2xl">
-          <div className="flex justify-between items-center relative z-10 mb-6">
-             <h3 className="text-xl font-black text-white">מיפוי פערים תפיסתיים</h3>
-          </div>
-          <div className="w-full flex-grow h-[350px] relative z-10">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
-                  <PolarGrid stroke="#27272a" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#71717a', fontSize: 10, fontWeight: 900 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 7]} tick={false} axisLine={false} />
-                  {session.sides.map((side, idx) => (
-                    <Radar
-                      key={side}
-                      name={side}
-                      dataKey={side}
-                      stroke={SIDE_COLORS[idx % SIDE_COLORS.length]}
-                      fill={SIDE_COLORS[idx % SIDE_COLORS.length]}
-                      fillOpacity={0.2}
-                      strokeWidth={3}
-                    />
-                  ))}
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                </RadarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-zinc-600 font-bold italic">ממתין למענים נוספים להצגת גרף...</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Component Deep Dive - NEW SECTION */}
-      <div className="space-y-8">
+    <div className="space-y-10 animate-fadeIn pb-32 max-w-7xl mx-auto px-4 md:px-0 text-right" dir="rtl">
+      {/* HEADER SECTION - Simplified */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-zinc-800 pb-8">
         <div className="flex items-center gap-6">
-           <span className="text-3xl font-black text-white tracking-tight whitespace-nowrap">צלילה למרכיבי השותפות</span>
-           <div className="h-px bg-zinc-800 flex-grow"></div>
-           <p className="text-zinc-500 text-xs font-black uppercase tracking-widest">(ממוצעים מסודרים מהגבוה לנמוך)</p>
+           <div className={`w-20 h-20 rounded-2xl flex items-center justify-center ${healthIndicator.bg} border border-white/5 shadow-xl`}>
+              <span className="text-4xl">{healthIndicator.icon}</span>
+           </div>
+           <div>
+              <h2 className="text-4xl font-black text-white tracking-tighter">{session.title}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                 <span className={`text-sm font-black ${healthIndicator.color}`}>{healthIndicator.label}</span>
+                 <span className="text-zinc-600">•</span>
+                 <span className="text-zinc-500 text-sm font-bold">{session.responses.length} משתתפים</span>
+              </div>
+           </div>
+        </div>
+        <div className="flex gap-4">
+           <button onClick={onBack} className="bg-zinc-900 text-zinc-400 px-6 py-4 rounded-2xl font-bold hover:text-white transition-all border border-zinc-800">חזרה</button>
+           <button 
+             disabled={session.responses.length < 1 || loading}
+             onClick={handleAnalyze}
+             className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white px-10 py-4 rounded-2xl font-black transition-all shadow-xl flex items-center gap-3"
+           >
+             {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : '✨ ניתוח AI'}
+           </button>
+        </div>
+      </div>
+
+      {/* CORE HIGHLIGHTS: Strengths, Weaknesses, and Critical Gaps */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* CRITICAL GAPS */}
+        <div className="glass rounded-[2.5rem] p-8 border-rose-500/10 bg-rose-500/5">
+           <h3 className="text-lg font-black text-rose-400 mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              פערים קריטיים בתפיסה
+           </h3>
+           {criticalGaps.length > 0 ? (
+             <div className="space-y-4">
+               {criticalGaps.slice(0, 3).map((gap, i) => (
+                 <div key={i} className="bg-black/20 p-4 rounded-2xl border border-white/5">
+                    <div className="flex justify-between items-center mb-1">
+                       <span className="text-sm font-black text-white">{gap.subject}</span>
+                       <span className="text-xs font-bold text-rose-400">{gap.gap} נק' פער</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500 font-bold leading-tight">קיימת אי-הסכמה משמעותית לגבי תפקוד הממשק בציר זה.</p>
+                 </div>
+               ))}
+             </div>
+           ) : (
+             <div className="h-40 flex items-center justify-center text-zinc-600 text-sm font-bold italic">לא נמצאו פערים קיצוניים</div>
+           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* AI STRENGTHS */}
+        <div className="glass rounded-[2.5rem] p-8 border-emerald-500/10 bg-emerald-500/5">
+           <h3 className="text-lg font-black text-emerald-400 mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              חוזקות הממשק (AI)
+           </h3>
+           <div className="space-y-3">
+              {analysis ? (
+                [...(analysis.strengths?.systemic || []), ...(analysis.strengths?.relational || [])].slice(0, 4).map((s, i) => (
+                  <div key={i} className="flex items-start gap-3 text-sm font-bold text-zinc-300">
+                     <span className="text-emerald-500 mt-1">✦</span>
+                     <span>{s}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="h-40 flex items-center justify-center text-zinc-700 text-sm font-bold italic">ממתין להרצת ניתוח</div>
+              )}
+           </div>
+        </div>
+
+        {/* AI WEAKNESSES */}
+        <div className="glass rounded-[2.5rem] p-8 border-zinc-700 bg-zinc-900/40">
+           <h3 className="text-lg font-black text-zinc-400 mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              חסמים מרכזיים (AI)
+           </h3>
+           <div className="space-y-3">
+              {analysis ? (
+                [...(analysis.weaknesses?.systemic || []), ...(analysis.weaknesses?.relational || [])].slice(0, 4).map((w, i) => (
+                  <div key={i} className="flex items-start gap-3 text-sm font-bold text-zinc-400">
+                     <span className="text-rose-500/60 mt-1">◇</span>
+                     <span>{w}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="h-40 flex items-center justify-center text-zinc-700 text-sm font-bold italic">ממתין להרצת ניתוח</div>
+              )}
+           </div>
+        </div>
+      </div>
+
+      {/* MAIN DATA - Sorted Components */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+           <h3 className="text-2xl font-black text-white whitespace-nowrap">ציוני המרכיבים (מהגבוה לנמוך)</h3>
+           <div className="h-px bg-zinc-800 flex-grow"></div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {componentStats.map((stat, i) => (
-            <div key={i} className="glass p-8 rounded-[2.5rem] border-white/5 space-y-4 hover:border-indigo-500/30 transition-all group">
-              <div className="flex justify-between items-start">
-                <h4 className="text-lg font-black text-white leading-tight">{stat.subject}</h4>
-                <div className="bg-indigo-500/10 px-3 py-1 rounded-lg text-indigo-400 font-black text-sm">
+            <div key={i} className={`glass p-6 rounded-3xl border-white/5 transition-all group ${stat.subject === 'שביעות רצון ותוצאות' ? 'bg-indigo-500/5 border-indigo-500/20' : ''}`}>
+              <div className="flex justify-between items-start mb-4">
+                <h4 className="text-sm font-black text-white leading-tight max-w-[120px]">{stat.subject}</h4>
+                <div className={`px-3 py-1 rounded-lg font-black text-xs ${stat.totalAvg >= 5.5 ? 'bg-emerald-500/10 text-emerald-400' : stat.totalAvg >= 4 ? 'bg-indigo-500/10 text-indigo-400' : 'bg-rose-500/10 text-rose-400'}`}>
                   {stat.totalAvg}
                 </div>
               </div>
               
-              <div className="space-y-3 pt-2">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                  <span>פער בין צדדים:</span>
-                  <span className={`${stat.gap > 1.5 ? 'text-rose-400' : stat.gap > 0.8 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {stat.gap} נק'
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-indigo-500 transition-all duration-1000" 
-                    style={{ width: `${(stat.totalAvg / 7) * 100}%` }}
-                  ></div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  {session.sides.map((side, idx) => (
-                    <div key={side} className="flex flex-col">
-                      <span className="text-[9px] text-zinc-600 font-black uppercase truncate">{side}</span>
-                      <span className="text-xs font-bold text-zinc-300">{stat[side]}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden mb-4">
+                 <div className={`h-full transition-all duration-1000 ${stat.gap > 1.2 ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${(stat.totalAvg / 7) * 100}%` }}></div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                 <div className="flex gap-2">
+                    {session.sides.map((side, idx) => (
+                      <div key={side} className="text-[9px] font-bold text-zinc-500 flex flex-col">
+                        <span className="opacity-60 truncate max-w-[40px]">{side}</span>
+                        <span className="text-zinc-300">{stat[side]}</span>
+                      </div>
+                    ))}
+                 </div>
+                 {stat.gap > 1.2 && (
+                   <span className="text-[9px] font-black text-rose-400 animate-pulse bg-rose-500/10 px-2 py-0.5 rounded-full">פער חריג!</span>
+                 )}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* AI Analysis Sections */}
+      {/* AI STRATEGIC SUMMARY & RECOMMENDATIONS - Only if Analysis exists */}
       {analysis && (
-        <div className="space-y-12 animate-slideUp">
-          <div className="flex items-center gap-6">
-             <span className="text-3xl font-black text-white tracking-tight whitespace-nowrap underline decoration-indigo-500 decoration-4 underline-offset-8">ניתוח המומחה (Strategic Insight)</span>
+        <div className="space-y-8 animate-slideUp pt-6">
+          <div className="flex items-center gap-4">
+             <h3 className="text-2xl font-black text-white whitespace-nowrap">המלצות ותובנת על (AI)</h3>
              <div className="h-px bg-zinc-800 flex-grow"></div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-             {/* Summary Box */}
-             <div className="md:col-span-2 glass rounded-[4rem] p-16 border-indigo-500/20 shadow-4xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 text-zinc-900 font-black text-9xl opacity-10 pointer-events-none">"</div>
-                <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mb-10">תמונת מצב וניתוח ה-Key Driver</h4>
-                <div className="space-y-8">
-                   {(analysis.summary || '').split('\n').map((p, i) => (
-                     <p key={i} className="text-2xl font-bold text-zinc-200 leading-snug tracking-tight">{p}</p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div className="lg:col-span-1 glass rounded-[2.5rem] p-8 border-indigo-500/20 bg-indigo-500/5">
+                <h4 className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-4">סיכום אבחוני</h4>
+                <p className="text-lg font-bold text-zinc-200 leading-snug">{analysis.summary}</p>
+             </div>
+
+             <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                   <h5 className="text-sm font-black text-zinc-500 uppercase tracking-widest px-2">מהלך מערכתי (תשתית)</h5>
+                   {analysis.recommendations?.systemic.slice(0, 3).map((rec, i) => (
+                     <div key={i} className="bg-zinc-900/60 p-5 rounded-2xl border border-zinc-800 flex items-start gap-4 text-sm font-bold text-zinc-200">
+                        <span className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-[10px] flex-shrink-0">{i+1}</span>
+                        {rec}
+                     </div>
+                   ))}
+                </div>
+                <div className="space-y-4">
+                   <h5 className="text-sm font-black text-zinc-500 uppercase tracking-widest px-2">שיפור ציר היחסים (תרבות)</h5>
+                   {analysis.recommendations?.relational.slice(0, 3).map((rec, i) => (
+                     <div key={i} className="bg-zinc-900/60 p-5 rounded-2xl border border-zinc-800 flex items-start gap-4 text-sm font-bold text-zinc-200">
+                        <span className="w-6 h-6 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center text-[10px] flex-shrink-0">{i+1}</span>
+                        {rec}
+                     </div>
                    ))}
                 </div>
              </div>
-             
-             {/* Strengths & Weaknesses */}
-             <div className="space-y-8">
-                <div className="glass rounded-[3rem] p-10 border-emerald-500/10">
-                   <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-6">חוזקות מרכזיות</h4>
-                   <ul className="space-y-4">
-                      {([...(analysis.strengths?.systemic || []), ...(analysis.strengths?.relational || [])]).map((s, i) => (
-                        <li key={i} className="text-sm font-bold text-zinc-300 flex items-start gap-3">
-                           <span className="text-emerald-500">◆</span> {s}
-                        </li>
-                      ))}
-                   </ul>
-                </div>
-                <div className="glass rounded-[3rem] p-10 border-rose-500/10">
-                   <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.4em] mb-6">חסמים וסיכונים</h4>
-                   <ul className="space-y-4">
-                      {([...(analysis.weaknesses?.systemic || []), ...(analysis.weaknesses?.relational || [])]).map((w, i) => (
-                        <li key={i} className="text-sm font-bold text-zinc-300 flex items-start gap-3">
-                           <span className="text-rose-500">◇</span> {w}
-                        </li>
-                      ))}
-                   </ul>
-                </div>
-             </div>
-          </div>
-
-          {/* Detailed Recommendations Grid */}
-          <div className="space-y-10 pt-10">
-             <h3 className="text-4xl font-black text-white tracking-tighter">המלצות אסטרטגיות לביצוע</h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                {/* Systemic Section */}
-                <div className="space-y-6">
-                   <h4 className="text-xl font-black text-indigo-400 border-r-4 border-indigo-400 pr-4">צד מערכתי (מנגנונים ומבנה)</h4>
-                   <div className="space-y-4">
-                      {(analysis.recommendations?.systemic || []).map((rec, i) => (
-                        <div key={i} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-zinc-800 flex items-start gap-6 group hover:border-indigo-500/40 transition-all shadow-lg">
-                           <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 font-black text-sm flex-shrink-0">
-                             {i+1}
-                           </div>
-                           <p className="text-lg font-bold text-zinc-100 leading-snug">{rec}</p>
-                        </div>
-                      ))}
-                   </div>
-                </div>
-
-                {/* Relational Section */}
-                <div className="space-y-6">
-                   <h4 className="text-xl font-black text-purple-400 border-r-4 border-purple-400 pr-4">ציר היחסים (אמון ותרבות עבודה)</h4>
-                   <div className="space-y-4">
-                      {(analysis.recommendations?.relational || []).map((rec, i) => (
-                        <div key={i} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-zinc-800 flex items-start gap-6 group hover:border-purple-500/40 transition-all shadow-lg">
-                           <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-black text-sm flex-shrink-0">
-                             {i+1}
-                           </div>
-                           <p className="text-lg font-bold text-zinc-100 leading-snug">{rec}</p>
-                        </div>
-                      ))}
-                   </div>
-                </div>
-             </div> 
           </div>
         </div>
       )}
