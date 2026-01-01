@@ -18,7 +18,16 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User,
 
 const STORAGE_KEY = 'synergy_db_v3';
 
-// Reverting to the requested pattern from the user image
+// Reverting strictly to the pattern shown in the user's image
+const getApiKey = (): string => {
+  try {
+    // @ts-ignore
+    return import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
+  } catch {
+    return "";
+  }
+};
+
 const getEnv = (key: string): string => {
   try {
     // @ts-ignore
