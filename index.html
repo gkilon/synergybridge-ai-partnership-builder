@@ -12,6 +12,7 @@
         font-family: 'Assistant', sans-serif;
         background-color: #09090b; /* Zinc 950 */
         color: #f4f4f5; /* Zinc 100 */
+        -webkit-tap-highlight-color: transparent;
       }
       .glass {
         background: rgba(24, 24, 27, 0.8);
@@ -35,6 +36,14 @@
       .animate-slideDown {
         animation: slideDown 0.4s ease-out forwards;
       }
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-8px); }
+        75% { transform: translateX(8px); }
+      }
+      .animate-shake {
+        animation: shake 0.2s ease-in-out 0s 2;
+      }
       .custom-scrollbar::-webkit-scrollbar {
         width: 4px;
       }
@@ -44,6 +53,9 @@
       .custom-scrollbar::-webkit-scrollbar-thumb {
         background: rgba(99, 102, 241, 0.3);
         border-radius: 10px;
+      }
+      input:focus {
+        outline: none;
       }
     </style>
     <script>
@@ -68,8 +80,7 @@
   }
 }
 </script>
-  <link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>

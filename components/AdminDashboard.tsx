@@ -22,14 +22,23 @@ const AdminDashboard: React.FC<Props> = ({
   initialEditingId, forceShowAdd, onCancel 
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isBypassed, setIsBypassed] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
+  
   const [newTitle, setNewTitle] = useState('');
   const [newSides, setNewSides] = useState('');
   const [newContext, setNewContext] = useState('');
   const [editingQuestions, setEditingQuestions] = useState<Question[]>(DEFAULT_QUESTIONS);
 
+  const ADMIN_PASSWORD = 'giladk25';
+
   useEffect(() => {
+    // Check if previously verified in this session
+    const verified = sessionStorage.getItem('sb_admin_verified') === 'true';
+    if (verified) setIsVerified(true);
+
     dbService.onAuthChange((u) => {
       setUser(u);
       setLoading(false);
@@ -51,37 +60,69 @@ const AdminDashboard: React.FC<Props> = ({
     }
   }, [initialEditingId, sessions]);
 
+  const handleVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === ADMIN_PASSWORD) {
+      setIsVerified(true);
+      sessionStorage.setItem('sb_admin_verified', 'true');
+      setError(false);
+    } else {
+      setError(true);
+      setTimeout(() => setError(false), 2000);
+    }
+  };
+
   if (loading) return null;
 
-  if (!user && !isBypassed) {
+  // Gatekeeper Screen
+  if (!isVerified) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-10 animate-fadeIn text-center">
-        <div className="w-28 h-28 bg-indigo-500/10 rounded-[2.5rem] flex items-center justify-center border border-indigo-500/20 shadow-2xl relative">
-          <svg className="w-14 h-14 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-        </div>
-        <div className="space-y-4 max-w-md">
-          <h2 className="text-4xl font-black text-white">כניסת מנהל</h2>
-          <p className="text-zinc-400 font-medium leading-relaxed">נהל ממשקים, ערוך שאלונים וצפה בדו"חות אסטרטגיים.</p>
-        </div>
-        <div className="space-y-4 w-full max-w-sm">
-          <button 
-            onClick={() => dbService.loginAsAdmin()}
-            className="w-full bg-white text-black px-10 py-5 rounded-2xl font-black hover:bg-zinc-200 transition-all flex items-center justify-center gap-4 shadow-2xl active:scale-95"
-          >
-            <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="google" />
-            כניסה עם Google
-          </button>
-          <button 
-            onClick={() => setIsBypassed(true)}
-            className="text-zinc-500 text-xs font-bold hover:text-zinc-300 transition-colors uppercase tracking-widest block w-full"
-          >
-            או המשך ללא התחברות (מצב הדגמה)
-          </button>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 animate-fadeIn text-center">
+        <div className="glass max-w-md w-full p-10 md:p-12 rounded-[3.5rem] border-indigo-500/20 shadow-[0_0_80px_rgba(99,102,241,0.1)] space-y-10 relative overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50"></div>
+          
+          <div className="w-24 h-24 bg-indigo-500/10 rounded-[2rem] flex items-center justify-center border border-indigo-500/20 shadow-2xl mx-auto relative group">
+            <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-0 group-hover:opacity-20 transition-opacity"></div>
+            <svg className="w-12 h-12 text-indigo-500 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-3xl font-black text-white tracking-tight">כניסת מנהל מערכת</h2>
+            <p className="text-zinc-500 font-bold text-sm leading-relaxed">הגישה לאיזור הניהול מוגבלת למורשים בלבד.</p>
+          </div>
+
+          <form onSubmit={handleVerify} className="space-y-6">
+            <div className="relative">
+              <input 
+                type="password"
+                placeholder="הזן קוד גישה..."
+                autoFocus
+                className={`w-full bg-zinc-900/80 border-2 rounded-2xl p-5 outline-none transition-all text-center font-black text-2xl tracking-[0.3em] ${error ? 'border-rose-500 animate-shake text-rose-500' : 'border-zinc-800 focus:border-indigo-500 text-white'}`}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {error && <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mt-2 animate-fadeIn">קוד גישה שגוי</p>}
+            </div>
+            
+            <button 
+              type="submit"
+              className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/20 hover:bg-indigo-500 transition-all active:scale-95"
+            >
+              אמת זהות וכנס
+            </button>
+          </form>
+
+          <div className="pt-4">
+             <p className="text-zinc-700 text-[9px] font-black uppercase tracking-widest">SynergyBridge Security Layer 1.0</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Admin Dashboard Content (Show only if verified)
   if (forceShowAdd || initialEditingId) {
     return (
       <div className="max-w-5xl mx-auto space-y-10 animate-slideDown pb-20">
@@ -132,7 +173,7 @@ const AdminDashboard: React.FC<Props> = ({
                 </button>
              </div>
              
-             <div className="grid grid-cols-1 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+             <div className="grid grid-cols-1 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar text-right" dir="rtl">
                 {editingQuestions.map((q, idx) => (
                   <div key={q.id} className="bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800 flex flex-col gap-4 group hover:border-indigo-500/30 transition-all">
                     <div className="flex gap-4 items-center">
@@ -144,7 +185,7 @@ const AdminDashboard: React.FC<Props> = ({
                           next[idx].text = e.target.value;
                           setEditingQuestions(next);
                         }}
-                        className="flex-grow bg-transparent border-none text-white font-bold outline-none text-lg"
+                        className="flex-grow bg-transparent border-none text-white font-bold outline-none text-lg text-right"
                       />
                       <button 
                         onClick={() => {
@@ -209,25 +250,29 @@ const AdminDashboard: React.FC<Props> = ({
     <div className="space-y-12 animate-fadeIn pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-5xl font-black text-white mb-2 tracking-tight">השותפויות שלי</h2>
-          <p className="text-zinc-500 font-medium text-lg">מעקב בזמן אמת אחר הבריאות הארגונית של הממשקים הפעילים.</p>
+          <h2 className="text-3xl md:text-5xl font-black text-white mb-2 tracking-tight">השותפויות שלי</h2>
+          <p className="text-zinc-500 font-medium text-base md:text-lg">מעקב בזמן אמת אחר הבריאות הארגונית של הממשקים הפעילים.</p>
         </div>
         <button 
-          onClick={() => { dbService.logout(); setIsBypassed(false); }}
+          onClick={() => { 
+            sessionStorage.removeItem('sb_admin_verified');
+            setIsVerified(false);
+            dbService.logout();
+          }}
           className="text-xs font-black text-zinc-600 hover:text-zinc-400 uppercase tracking-widest"
         >
           התנתק מהמערכת
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
         {sessions.map(session => (
-          <div key={session.id} className="glass rounded-[3rem] p-10 flex flex-col group hover:border-indigo-500/50 transition-all duration-700 relative overflow-hidden">
+          <div key={session.id} className="glass rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-10 flex flex-col group hover:border-indigo-500/50 transition-all duration-700 relative overflow-hidden">
              <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full translate-x-1/2 -translate-y-1/2 blur-2xl group-hover:bg-indigo-500/10 transition-colors"></div>
              
-             <div className="flex justify-between items-center mb-10 relative z-10">
+             <div className="flex justify-between items-center mb-8 md:mb-10 relative z-10">
                 <div className="flex flex-col">
-                   <span className="text-4xl font-black text-white">{session.responses.length}</span>
+                   <span className="text-3xl md:text-4xl font-black text-white">{session.responses.length}</span>
                    <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">מענים שנאספו</span>
                 </div>
                 <div className="flex gap-2">
@@ -240,17 +285,17 @@ const AdminDashboard: React.FC<Props> = ({
                 </div>
              </div>
              
-             <div className="flex-grow mb-10 relative z-10">
-                <h3 className="text-3xl font-black text-white leading-tight mb-4">{session.title}</h3>
+             <div className="flex-grow mb-8 md:mb-10 relative z-10">
+                <h3 className="text-2xl md:text-3xl font-black text-white leading-tight mb-4">{session.title}</h3>
                 <div className="flex flex-wrap gap-2">
-                  {session.sides.map(s => <span key={s} className="text-[10px] font-black px-3 py-1 bg-zinc-900/50 rounded-lg text-indigo-400 border border-indigo-500/10 uppercase">{s}</span>)}
+                  {session.sides.map(s => <span key={s} className="text-[9px] md:text-[10px] font-black px-3 py-1 bg-zinc-900/50 rounded-lg text-indigo-400 border border-indigo-500/10 uppercase">{s}</span>)}
                 </div>
              </div>
 
              <div className="space-y-4 relative z-10">
                 <button 
                   onClick={() => onOpenResults?.(session.id)}
-                  className="w-full bg-white text-black py-5 rounded-2xl font-black text-lg transition-all shadow-xl hover:scale-[1.02] active:scale-95"
+                  className="w-full bg-white text-black py-4 md:py-5 rounded-2xl font-black text-base md:text-lg transition-all shadow-xl hover:scale-[1.02] active:scale-95"
                 >
                   ניתוח אסטרטגי
                 </button>
@@ -260,7 +305,7 @@ const AdminDashboard: React.FC<Props> = ({
                      navigator.clipboard.writeText(url);
                      alert('קישור השאלון הועתק! ניתן להעביר למשתתפים.');
                   }}
-                  className="w-full bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 py-4 rounded-2xl font-bold transition-all border border-zinc-800 text-sm"
+                  className="w-full bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 py-3 md:py-4 rounded-2xl font-bold transition-all border border-zinc-800 text-xs md:text-sm"
                 >
                   העתק קישור להפצה
                 </button>
@@ -269,12 +314,12 @@ const AdminDashboard: React.FC<Props> = ({
         ))}
 
         {sessions.length === 0 && (
-          <div className="col-span-full py-32 text-center glass rounded-[4rem] border-dashed border-2 border-zinc-800 group hover:border-indigo-500/30 transition-colors">
-            <div className="w-20 h-20 bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto mb-8 text-zinc-700 group-hover:scale-110 transition-transform">
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+          <div className="col-span-full py-20 md:py-32 text-center glass rounded-[3rem] md:rounded-[4rem] border-dashed border-2 border-zinc-800 group hover:border-indigo-500/30 transition-colors">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto mb-6 md:mb-8 text-zinc-700 group-hover:scale-110 transition-transform">
+              <svg className="w-8 h-8 md:w-10 md:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
             </div>
-            <p className="text-zinc-500 font-black text-2xl">טרם הוקמו שותפויות</p>
-            <p className="text-zinc-600 font-bold mt-2">לחץ על "+ ממשק חדש" בתפריט העליון כדי להתחיל.</p>
+            <p className="text-zinc-500 font-black text-xl md:text-2xl px-4">טרם הוקמו שותפויות</p>
+            <p className="text-zinc-600 font-bold mt-2 text-sm md:text-base">לחץ על "+ ממשק חדש" בתפריט העליון כדי להתחיל.</p>
           </div>
         )}
       </div>
