@@ -26,31 +26,36 @@ export const PARTNERSHIP_METHODOLOGY = `
 `;
 
 export const DEFAULT_QUESTIONS: Question[] = [
-  // מנגנון (Systemic)
-  { id: 'goal_1', category: Category.SYSTEMIC, text: 'המידה בה המטרה של הממשק ברורה ומוסכמת על שני הצדדים', shortLabel: 'מטרה' },
-  { id: 'goal_2', category: Category.SYSTEMIC, text: 'המידה בה סדרי העדיפויות מסונכרנים בין היחידות', shortLabel: 'מטרה' },
+  // --- צד המערכתי: מנגנון העבודה (אג'נדה, תפקידים, החלטות, שגרות) ---
+  { id: 'q1', category: Category.SYSTEMIC, text: 'המטרות המשותפות ברורות', shortLabel: 'מטרות' },
+  { id: 'q2', category: Category.SYSTEMIC, text: 'יש הסכמה על סדרי העדיפויות להשגת המטרות', shortLabel: 'עדיפויות' },
+  { id: 'q3', category: Category.SYSTEMIC, text: 'קיימים יעדים מדידים ומפורטים', shortLabel: 'יעדים' },
+  // FIX: Using double quotes to prevent syntax errors with Hebrew apostrophes in single-quoted strings
+  { id: 'q4', category: Category.SYSTEMIC, text: "קיימת תחושה של אג'נדה משותפת", shortLabel: "אג'נדה" },
   
-  { id: 'roles_1', category: Category.SYSTEMIC, text: 'בהירות חלוקת האחריות וגבולות הגזרה בין הצוותים', shortLabel: 'תפקידים' },
-  { id: 'roles_2', category: Category.SYSTEMIC, text: 'המידה בה אין כפילויות או "שטחים מתים" בביצוע המשימות', shortLabel: 'תפקידים' },
+  { id: 'q5', category: Category.SYSTEMIC, text: 'התפקידים ותחומי האחריות ברורים ומובנים לחברי השותפות', shortLabel: 'תפקידים' },
+  { id: 'q6', category: Category.SYSTEMIC, text: 'לכל אחד ברור מה מצופה ממנו', shortLabel: 'ציפיות' },
+  { id: 'q7', category: Category.SYSTEMIC, text: 'תחומי האחריות הינם הגיוניים וניתנים למימוש', shortLabel: 'אחריות' },
   
-  { id: 'decisions_1', category: Category.SYSTEMIC, text: 'המידה בה תהליכי קבלת ההחלטות בממשק מהירים וענייניים', shortLabel: 'החלטות' },
-  { id: 'decisions_2', category: Category.SYSTEMIC, text: 'בהירות לגבי מי מחליט מה ובאיזה פורום', shortLabel: 'החלטות' },
+  { id: 'q8', category: Category.SYSTEMIC, text: 'כאשר נדרשת החלטה ברור מי ואיך צריך לקבל אותה', shortLabel: 'החלטות' },
+  { id: 'q9', category: Category.SYSTEMIC, text: 'ההחלטות המתקבלות הן ברורות וישימות', shortLabel: 'ביצוע החלטה' },
+  { id: 'q10', category: Category.SYSTEMIC, text: 'חברי השותפות מחויבים להחלטות שקיבלו', shortLabel: 'מחויבות' },
+  { id: 'q11', category: Category.SYSTEMIC, text: 'כאשר מתעוררים חילוקי דעות יודעים לנהל ולפתור אותם', shortLabel: 'קונפליקטים' },
   
-  { id: 'routines_1', category: Category.SYSTEMIC, text: 'קיומן של פגישות ושגרות עבודה קבועות שמקדמות את המטרות', shortLabel: 'שגרות' },
-  { id: 'routines_2', category: Category.SYSTEMIC, text: 'האפקטיביות של שגרות העבודה הקיימות (ניהול זמן ותוצרים)', shortLabel: 'שגרות' },
+  { id: 'q12', category: Category.SYSTEMIC, text: 'תהליכי העבודה המשותפים איכותיים ומקדמים את השגת המטרות', shortLabel: 'תהליכים' },
+  { id: 'q13', category: Category.SYSTEMIC, text: 'קיימות שגרות עבודה משותפות מספקות', shortLabel: 'שגרות' },
+  { id: 'q14', category: Category.SYSTEMIC, text: 'אין בירוקרטיה ובזבוזי זמן מיותרים', shortLabel: 'יעילות' },
 
-  // יחסים (Relational)
-  { id: 'transparency_1', category: Category.RELATIONAL, text: 'המידה בה מידע רלוונטי זורם בחופשיות בין הצדדים', shortLabel: 'שקיפות' },
-  { id: 'transparency_2', category: Category.RELATIONAL, text: 'רמת הכנות והפתיחות בדיווח על תקלות או אתגרים', shortLabel: 'שקיפות' },
+  // --- צד היחסים: כבוד, אמון, תקשורת ---
+  { id: 'q15', category: Category.RELATIONAL, text: 'חברי השותפות מכבדים את הזמן אחד של השני', shortLabel: 'כבוד לזמן' },
+  { id: 'q16', category: Category.RELATIONAL, text: 'קיימת הערכה לשונות ולערך המוסף אחד של השני', shortLabel: 'ערך מוסף' },
+  { id: 'q17', category: Category.RELATIONAL, text: 'קיימת נורמה של היוועצות הדדית בנושאים הרלוונטיים', shortLabel: 'היוועצות' },
+  { id: 'q18', category: Category.RELATIONAL, text: 'חברי השותפות עומדים בהתחייבויותיהם', shortLabel: 'אמינות' },
   
-  { id: 'respect_1', category: Category.RELATIONAL, text: 'המידה בה יש הערכה מקצועית הדדית בין בעלי התפקידים', shortLabel: 'כבוד' },
-  { id: 'respect_2', category: Category.RELATIONAL, text: 'שמירה על שיח מכבד גם במצבי לחץ או אי-הסכמה', shortLabel: 'כבוד' },
-  
-  { id: 'commitment_1', category: Category.RELATIONAL, text: 'רמת הגיוס והנרתמות של הצד השני להצלחת המשימות שלי', shortLabel: 'מחויבות' },
-  { id: 'commitment_2', category: Category.RELATIONAL, text: 'המידה בה הצדדים מרגישים "באותה סירה" מול המשימה', shortLabel: 'מחויבות' },
-  
-  { id: 'comm_1', category: Category.RELATIONAL, text: 'זמינות ונגישות של השותפים בצד השני כשיש צורך', shortLabel: 'תקשורת' },
-  { id: 'comm_2', category: Category.RELATIONAL, text: 'היכולת לפתור קונפליקטים בצורה ישירה וללא משקעים', shortLabel: 'תקשורת' },
+  { id: 'q19', category: Category.RELATIONAL, text: 'המידע שאני צריך הינו זמין עבורי', shortLabel: 'זמינות מידע' },
+  { id: 'q20', category: Category.RELATIONAL, text: 'שמים דברים על השולחן ולא נרתעים להביע דעה', shortLabel: 'פתיחות' },
+  { id: 'q21', category: Category.RELATIONAL, text: 'ישנה לקיחה של אחריות ודיווח על תקלות וטעויות', shortLabel: 'אחריות אישית' },
+  { id: 'q22', category: Category.RELATIONAL, text: 'קיימת אווירת עבודה נעימה וזורמת', shortLabel: 'אווירה' },
 ];
 
 export const ANALYSIS_PROMPT_TEMPLATE = `

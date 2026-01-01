@@ -3,14 +3,11 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 import { ANALYSIS_PROMPT_TEMPLATE, PARTNERSHIP_METHODOLOGY } from "../constants";
 
+// Function to analyze partnership using Gemini API
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  const apiKey = (process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "").trim();
-  
-  if (!apiKey) {
-    throw new Error("מפתח API לא הוגדר. אנא וודא שהגדרת VITE_GEMINI_API_KEY או API_KEY.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  // CRITICAL: Always create a new GoogleGenAI instance right before the call to ensure it uses the latest API key.
+  // The API key must be obtained exclusively from process.env.API_KEY.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const formattedData = {
     title: session.title,
@@ -76,10 +73,12 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
       }
     });
 
+    // Directly access .text property from the response as it is a property, not a method.
     const text = response.text || "{}";
     return JSON.parse(text);
   } catch (error: any) {
     console.error("AI Analysis failed:", error);
+    // Handle specific API errors as requested in guidelines (e.g., entity not found / API key issues)
     if (error?.message?.includes("entity was not found") || error?.message?.includes("API Key")) {
       throw new Error("AUTH_ERROR");
     }

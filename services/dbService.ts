@@ -82,8 +82,13 @@ export const dbService = {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       return result.user;
-    } catch (e) {
+    } catch (e: any) {
       console.error("Login failed:", e);
+      if (e.code === 'auth/unauthorized-domain') {
+        alert(`שגיאת אבטחה של פיירבייס:\nהדומיין הנוכחי (${window.location.hostname}) אינו מורשה.\n\nיש להוסיף דומיין זה תחת:\nAuthentication -> Settings -> Authorized domains\nבתוך ה-Firebase Console.`);
+      } else {
+        alert(`התחברות נכשלה: ${e.message}`);
+      }
       return null;
     }
   },
@@ -110,8 +115,11 @@ export const dbService = {
           saveLocalSessions(sessions);
           return sessions;
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("Cloud fetch failed:", e);
+        if (e.code === 'permission-denied') {
+          console.warn("Firestore Rules are blocking access. Update rules to allow read.");
+        }
       }
     }
     return getLocalSessions();
@@ -119,7 +127,6 @@ export const dbService = {
 
   subscribeToSessions(callback: (sessions: PartnershipSession[]) => void) {
     if (!db) {
-      // אם אין ענן, פשוט נחזיר את מה שיש לוקאלית פעם אחת
       callback(getLocalSessions());
       return () => {};
     }
@@ -144,8 +151,11 @@ export const dbService = {
     if (db) {
       try {
         await setDoc(doc(db, 'sessions', session.id), session);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Cloud save failed:", e);
+        if (e.code === 'permission-denied') {
+          alert("שגיאה: אין הרשאות כתיבה לענן. יש לעדכן את ה-Rules ב-Firebase.");
+        }
       }
     }
   },
