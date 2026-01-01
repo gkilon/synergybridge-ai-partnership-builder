@@ -2,14 +2,31 @@
 import { Category, Question } from './types';
 
 export const DEFAULT_QUESTIONS: Question[] = [
-  { id: 'sys1', category: Category.SYSTEMIC, text: 'מטרה משותפת וסדרי עדיפויות מסונכרנים', shortLabel: 'מטרה' },
-  { id: 'sys2', category: Category.SYSTEMIC, text: 'בהירות בתפקידים ובגבולות הגזרה', shortLabel: 'תפקידים' },
-  { id: 'sys3', category: Category.SYSTEMIC, text: 'שגרות עבודה אפקטיביות ומובנות', shortLabel: 'שגרות' },
-  { id: 'rel1', category: Category.RELATIONAL, text: 'כבוד הדדי והערכה מקצועית', shortLabel: 'כבוד' },
-  { id: 'rel2', category: Category.RELATIONAL, text: 'מחויבות הדדית להצלחת הממשק', shortLabel: 'מחויבות' },
-  { id: 'rel3', category: Category.RELATIONAL, text: 'שקיפות ופתיחות בשיתוף מידע', shortLabel: 'שקיפות' },
-  { id: 'rel4', category: Category.RELATIONAL, text: 'קולגיאליות ותמיכה ברגעי משבר', shortLabel: 'קולגיאליות' },
-  { id: 'rel5', category: Category.RELATIONAL, text: 'תקשורת חלקה ופתרון קונפליקטים ענייני', shortLabel: 'תקשורת' },
+  // מנגנון (Systemic)
+  { id: 'goal_1', category: Category.SYSTEMIC, text: 'המידה בה המטרה של הממשק ברורה ומוסכמת על שני הצדדים', shortLabel: 'מטרה' },
+  { id: 'goal_2', category: Category.SYSTEMIC, text: 'המידה בה סדרי העדיפויות מסונכרנים בין היחידות', shortLabel: 'מטרה' },
+  
+  { id: 'roles_1', category: Category.SYSTEMIC, text: 'בהירות חלוקת האחריות וגבולות הגזרה בין הצוותים', shortLabel: 'תפקידים' },
+  { id: 'roles_2', category: Category.SYSTEMIC, text: 'המידה בה אין כפילויות או "שטחים מתים" בביצוע המשימות', shortLabel: 'תפקידים' },
+  
+  { id: 'decisions_1', category: Category.SYSTEMIC, text: 'המידה בה תהליכי קבלת ההחלטות בממשק מהירים וענייניים', shortLabel: 'החלטות' },
+  { id: 'decisions_2', category: Category.SYSTEMIC, text: 'בהירות לגבי מי מחליט מה ובאיזה פורום', shortLabel: 'החלטות' },
+  
+  { id: 'routines_1', category: Category.SYSTEMIC, text: 'קיומן של פגישות ושגרות עבודה קבועות שמקדמות את המטרות', shortLabel: 'שגרות' },
+  { id: 'routines_2', category: Category.SYSTEMIC, text: 'האפקטיביות של שגרות העבודה הקיימות (ניהול זמן ותוצרים)', shortLabel: 'שגרות' },
+
+  // יחסים (Relational)
+  { id: 'transparency_1', category: Category.RELATIONAL, text: 'המידה בה מידע רלוונטי זורם בחופשיות בין הצדדים', shortLabel: 'שקיפות' },
+  { id: 'transparency_2', category: Category.RELATIONAL, text: 'רמת הכנות והפתיחות בדיווח על תקלות או אתגרים', shortLabel: 'שקיפות' },
+  
+  { id: 'respect_1', category: Category.RELATIONAL, text: 'המידה בה יש הערכה מקצועית הדדית בין בעלי התפקידים', shortLabel: 'כבוד' },
+  { id: 'respect_2', category: Category.RELATIONAL, text: 'שמירה על שיח מכבד גם במצבי לחץ או אי-הסכמה', shortLabel: 'כבוד' },
+  
+  { id: 'commitment_1', category: Category.RELATIONAL, text: 'רמת הגיוס והנרתמות של הצד השני להצלחת המשימות שלי', shortLabel: 'מחויבות' },
+  { id: 'commitment_2', category: Category.RELATIONAL, text: 'המידה בה הצדדים מרגישים "באותה סירה" מול המשימה', shortLabel: 'מחויבות' },
+  
+  { id: 'comm_1', category: Category.RELATIONAL, text: 'זמינות ונגישות של השותפים בצד השני כשיש צורך', shortLabel: 'תקשורת' },
+  { id: 'comm_2', category: Category.RELATIONAL, text: 'היכולת לפתור קונפליקטים בצורה ישירה וללא משקעים', shortLabel: 'תקשורת' },
 ];
 
 export const ANALYSIS_PROMPT_TEMPLATE = `
@@ -17,6 +34,8 @@ export const ANALYSIS_PROMPT_TEMPLATE = `
 השותפות הוערכה על ידי המשתתפים בשני צירים (בסקאלה של 1 עד 7):
 1. צד מערכתי (מנגנוני עבודה, מטרות, סדרי עדיפויות, תפקידים).
 2. צד היחסים (אמון, כבוד, שקיפות, תקשורת, קולגיאליות).
+
+הנתונים מוצגים לפי 8 פרמטרים מרכזיים (מטרה, תפקידים, החלטות, שגרות, שקיפות, כבוד, מחויבות, תקשורת).
 
 עליך לספק ניתוח מעמיק הכולל:
 - סיכום תמציתי ומנהלי של תמונת המצב.

@@ -43,15 +43,32 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   };
 
   const getChartData = () => {
-    return session.questions.map(q => {
-      // Use shortLabel if available, otherwise truncate the text
-      const dataPoint: any = { subject: q.shortLabel || (q.text.length > 12 ? q.text.slice(0, 10) + '...' : q.text) };
+    // Group questions by shortLabel to aggregate scores (e.g., average of 2 goal questions)
+    const labels = Array.from(new Set(session.questions.map(q => q.shortLabel || 'אחר')));
+    
+    return labels.map(label => {
+      const dataPoint: any = { subject: label };
+      const relatedQuestions = session.questions.filter(q => q.shortLabel === label);
+      
       session.sides.forEach(side => {
         const sideResponses = session.responses.filter(r => r.side === side);
-        const avg = sideResponses.length > 0 
-          ? sideResponses.reduce((acc, curr) => acc + (curr.scores[q.id] || 0), 0) / sideResponses.length 
-          : 0;
-        dataPoint[side] = Number(avg.toFixed(1));
+        if (sideResponses.length > 0) {
+          let totalScore = 0;
+          let count = 0;
+          
+          sideResponses.forEach(r => {
+            relatedQuestions.forEach(q => {
+              if (r.scores[q.id]) {
+                totalScore += r.scores[q.id];
+                count++;
+              }
+            });
+          });
+          
+          dataPoint[side] = count > 0 ? Number((totalScore / count).toFixed(1)) : 0;
+        } else {
+          dataPoint[side] = 0;
+        }
       });
       return dataPoint;
     });
@@ -113,7 +130,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         {/* Spider Chart Section */}
         <div className="glass rounded-[2.5rem] p-8 md:p-10 space-y-8 min-h-[500px] flex flex-col">
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-black text-white">השוואת תפיסות (ציר 1-7)</h3>
+            <h3 className="text-xl font-black text-white">פרופיל הממשק (ממוצע פרמטרים)</h3>
             <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">{session.responses.length} מענים</span>
           </div>
           
@@ -123,12 +140,14 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                 <PolarGrid stroke="#3f3f46" />
                 <PolarAngleAxis 
                   dataKey="subject" 
-                  tick={{ fill: '#a1a1aa', fontSize: 12, fontWeight: 800 }} 
+                  tick={{ fill: '#a1a1aa', fontSize: 14, fontWeight: 900 }}
+                  cx={0} cy={0}
                 />
                 <PolarRadiusAxis 
-                  angle={30} 
+                  angle={90} 
                   domain={[0, 7]} 
-                  tick={{ fill: '#3f3f46', fontSize: 10 }} 
+                  tick={{ fill: '#52525b', fontSize: 10 }}
+                  axisLine={false}
                 />
                 {session.sides.map((side, idx) => (
                   <Radar
@@ -137,14 +156,15 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                     dataKey={side}
                     stroke={SIDE_COLORS[idx % SIDE_COLORS.length]}
                     fill={SIDE_COLORS[idx % SIDE_COLORS.length]}
-                    fillOpacity={0.3}
+                    fillOpacity={0.4}
+                    strokeWidth={3}
                   />
                 ))}
-                <Legend iconType="circle" />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-center text-xs text-zinc-500 italic">הגרף מציג את הממוצע של כל צד במילים מרכזיות למניעת חפיפה.</p>
+          <p className="text-center text-xs text-zinc-500 italic">הגרף מאחד את 16 השאלות ל-8 פרמטרים מרכזיים להשוואה נקייה.</p>
         </div>
 
         {/* Gap Analysis Table */}
@@ -155,8 +175,8 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
               <thead>
                 <tr className="text-zinc-500 text-[10px] font-black uppercase tracking-widest border-b border-zinc-800">
                   <th className="pb-4 text-right">צד בממשק</th>
-                  <th className="pb-4 text-center">ממוצע מערכתי</th>
-                  <th className="pb-4 text-center">ממוצע יחסים</th>
+                  <th className="pb-4 text-center">ממוצע מערכתי (1-4)</th>
+                  <th className="pb-4 text-center">ממוצע יחסים (5-8)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
