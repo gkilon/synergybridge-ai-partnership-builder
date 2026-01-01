@@ -4,37 +4,40 @@ import { PartnershipSession, AIAnalysis } from "../types";
 import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Respecting the pattern from the user image while keeping process.env for system requirements
+  // @ts-ignore
+  const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   
   const formattedData = {
     title: session.title,
+    context: session.context,
     sides: session.sides,
     responses: session.responses.map(r => ({
       side: r.side,
-      scores: r.scores, // q23-q24 are the target variables
+      scores: r.scores,
       comments: r.comments
     }))
   };
 
   const prompt = `
-    משימה: בצע "ניתוח השפעה אסטרטגי" (Key Driver Analysis) לממשק הארגוני.
+    משימה: בצע "ניתוח השפעה אסטרטגי" (Key Driver Analysis).
     
     מתודולוגיה: ${PARTNERSHIP_METHODOLOGY}
     
     נתונים: ${JSON.stringify(formattedData)}
 
     שלבי הניתוח הנדרשים:
-    1. Key Driver: זהה איזו קטגוריה (אג'נדה/תפקידים/החלטות/תהליכים/כבוד/תקשורת) היא בעלת המתאם הגבוה ביותר לשביעות הרצון (q23, q24). מה "מפיל" או "מרים" את הממשק הזה?
-    2. Side Gap Detection: האם יש פער תפיסתי מהותי בין הצדדים? (למשל צד א' מרגיש שהאג'נדה ברורה וצד ב' מרגיש אבוד).
-    3. יישות שלישית: הגדר את מצב "בריאות" השותפות כיישות עצמאית.
-    4. המלצות: ספק 3 המלצות מערכתיות ו-3 המלצות יחסים, מדורגות לפי אימפקט על שביעות הרצון.
-
-    החזר JSON במבנה הבא:
+    1. המשתנה התלוי: השאלות q23 ו-q24 הן התוצאה (שביעות רצון ואפקטיביות). 
+    2. מקדם השפעה: זהה איזה מהתנאים האחרים (אג'נדה, תפקידים, החלטות, תהליכים, כבוד, תקשורת) הכי משפיע על התוצאה הזו בממשק הספציפי הזה.
+    3. פערים: נתח את הפער בין הצדדים.
+    
+    החזר JSON:
     {
       "strengths": { "systemic": [], "relational": [] },
       "weaknesses": { "systemic": [], "relational": [] },
       "recommendations": { "systemic": [], "relational": [] },
-      "summary": "פתח ב'תובנת המפתח' (The Game Changer) - מהו המשתנה שהכי משפיע כאן על שביעות הרצון. המשך בניתוח הפערים בין הצדדים וסיים במפת הדרכים."
+      "summary": "התחל ב'מקדם ההשפעה המרכזי' - מהו הדבר שהכי משפיע על שביעות הרצון כאן. המשך בניתוח פערים וסיים בהמלצות אופרטיביות."
     }
   `;
 

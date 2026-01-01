@@ -18,11 +18,11 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User,
 
 const STORAGE_KEY = 'synergy_db_v3';
 
+// Reverting to the requested pattern from the user image
 const getEnv = (key: string): string => {
   try {
     // @ts-ignore
-    const env = (import.meta as any).env;
-    return env?.[key] || (process as any).env?.[key] || "";
+    return import.meta.env[key] || process.env[key] || "";
   } catch {
     return "";
   }
@@ -74,23 +74,14 @@ export const dbService = {
     return !!db;
   },
 
-  // Renamed from loginAsAdmin to loginWithGoogle to match components/AdminDashboard.tsx usage
   async loginWithGoogle(): Promise<User | null> {
-    if (!auth) {
-      console.log("No cloud config found. Login is disabled.");
-      return null;
-    }
+    if (!auth) return null;
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       return result.user;
     } catch (e: any) {
       console.error("Login failed:", e);
-      if (e.code === 'auth/unauthorized-domain') {
-        alert(`שגיאת אבטחה של פיירבייס:\nהדומיין הנוכחי (${window.location.hostname}) אינו מורשה.\n\nיש להוסיף דומיין זה תחת:\nAuthentication -> Settings -> Authorized domains\nבתוך ה-Firebase Console.`);
-      } else {
-        alert(`התחברות נכשלה: ${e.message}`);
-      }
       return null;
     }
   },
@@ -99,7 +90,6 @@ export const dbService = {
     if (auth) await signOut(auth);
   },
 
-  // Fixed to return the unsubscribe function to avoid "not callable" error in AdminDashboard
   onAuthChange(callback: (user: User | null) => void) {
     if (!auth) {
       callback(null);
@@ -120,9 +110,6 @@ export const dbService = {
         }
       } catch (e: any) {
         console.error("Cloud fetch failed:", e);
-        if (e.code === 'permission-denied') {
-          console.warn("Firestore Rules are blocking access. Update rules to allow read.");
-        }
       }
     }
     return getLocalSessions();
@@ -139,7 +126,6 @@ export const dbService = {
       saveLocalSessions(sessions);
       callback(sessions);
     }, (err) => {
-      console.error("Snapshot error:", err);
       callback(getLocalSessions());
     });
   },
@@ -156,9 +142,6 @@ export const dbService = {
         await setDoc(doc(db, 'sessions', session.id), session);
       } catch (e: any) {
         console.error("Cloud save failed:", e);
-        if (e.code === 'permission-denied') {
-          alert("שגיאה: אין הרשאות כתיבה לענן. יש לעדכן את ה-Rules ב-Firebase.");
-        }
       }
     }
   },
@@ -166,14 +149,7 @@ export const dbService = {
   async deleteSession(sessionId: string): Promise<void> {
     const local = getLocalSessions().filter(s => s.id !== sessionId);
     saveLocalSessions(local);
-
-    if (db) {
-      try {
-        await deleteDoc(doc(db, 'sessions', sessionId));
-      } catch (e) {
-        console.error("Cloud delete failed:", e);
-      }
-    }
+    if (db) await deleteDoc(doc(db, 'sessions', sessionId));
   },
 
   async addResponse(sessionId: string, response: ParticipantResponse): Promise<void> {
@@ -184,7 +160,6 @@ export const dbService = {
       session.responses.push(response);
       saveLocalSessions(local);
     }
-
     if (db) {
       try {
         const docRef = doc(db, 'sessions', sessionId);
