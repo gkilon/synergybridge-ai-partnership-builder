@@ -1,14 +1,13 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
-import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
 const getApiKey = (): string => {
   try {
     // @ts-ignore
-    return import.meta.env.VITE_GEMINI_API_KEY || "";
+    return (import.meta as any).env.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
   } catch {
-    return "";
+    return process.env.API_KEY || "";
   }
 };
 
@@ -19,25 +18,26 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
   const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
-    תפקיד: יועץ ניהולי בכיר. 
-    משימה: אבחון ממשק עבודה ארגוני.
+    תפקיד: יועץ ניהולי בכיר המומחה בממשקי עבודה.
+    משימה: אבחון חד ופרקטי של ממשק עבודה ארגוני על בסיס נתונים.
     
-    נתונים:
-    - מדד הצלחה (Outcome): ${aggregatedData.satisfactionScore}%
-    - ביצועי דרייברים: ${JSON.stringify(aggregatedData.driverData)}
-    - פער תפיסה: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (${aggregatedData.biggestGap.value})` : 'אין פערים חריגים'}
+    נתונים גולמיים:
+    - מדד בריאות הממשק: ${aggregatedData.satisfactionScore}%
+    - ביצועי דרייברים (תהליכים ויחסים): ${JSON.stringify(aggregatedData.driverData)}
+    - פער תפיסה מקסימלי: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (פער של ${aggregatedData.biggestGap.value} נקודות)` : 'תיאום גבוה בין הצדדים'}
 
-    הנחיות:
-    1. דבר בגובה העיניים, שפה ניהולית פרקטית.
-    2. הימנע ממושגים תיאורטיים (כמו "היישות השלישית").
-    3. התמקד ב"למה זה קורה" ו"מה עושים מחר בבוקר".
+    הנחיות קריטיות:
+    1. דבר בגובה העיניים למנהלים. אל תשתמש במונחים אקדמיים או תיאורטיים (כמו "היישות השלישית").
+    2. השתמש במושגים ניהוליים: "זרימת מידע", "מנגנוני החלטה", "חיכוך תפעולי", "אמון מקצועי", "סנכרון מטרות".
+    3. תן ערך מוסף מעבר לגרף: הסבר *למה* הפערים קיימים ואיך הם משפיעים על השורה התחתונה.
+    4. ההמלצות חייבות להיות ברות ביצוע.
 
-    החזר JSON:
+    החזר JSON בלבד במבנה הבא:
     {
-      "summary": "אבחון המצב ב-3 משפטים חדים.",
+      "summary": "אבחון המצב ב-3 משפטים חדים ומנהליים.",
       "recommendations": {
-        "systemic": ["המלצה מבנית 1", "המלצה מבנית 2"],
-        "relational": ["המלצה בינאישית 1", "המלצה בינאישית 2"]
+        "systemic": ["המלצה מבנית/תהליכית 1", "המלצה מבנית/תהליכית 2"],
+        "relational": ["המלצה בתחום התקשורת/אמון 1", "המלצה בתחום התקשורת/אמון 2"]
       },
       "strengths": { "systemic": [], "relational": [] },
       "weaknesses": { "systemic": [], "relational": [] }
@@ -48,39 +48,47 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
-      config: { responseMimeType: "application/json", temperature: 0.4 }
+      config: { 
+        responseMimeType: "application/json",
+        temperature: 0.4,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
     });
     return JSON.parse(response.text?.trim() || "{}");
   } catch (error) {
-    throw new Error("ניתוח AI נכשל.");
+    throw new Error("ניתוח AI נכשל. נסה שנית.");
   }
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
   const apiKey = getApiKey();
+  if (!apiKey) throw new Error("מפתח API חסר.");
   const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
-    הפוך את ההמלצה הניהולית הבאה לצעדים אופרטיביים ברורים בשטח:
+    הפוך את ההמלצה הניהולית הבאה לתכנית עבודה קונקרטית של "צעדים בשטח":
     המלצה: "${recommendation}"
     הקשר הממשק: "${context}"
     
     דרישות:
-    - 3-4 צעדים קונקרטיים.
-    - שפה של "עשה".
-    - בלי תיאוריה, רק ביצוע.
+    - 3-4 צעדים אופרטיביים בלבד.
+    - שפה של פעולה (עשה/בצע/קבע).
+    - ללא הקדמות, ללא תיאוריה. רק "איך עושים את זה תכל'ס".
     
-    החזר רשימת JSON של מחרוזות.
+    החזר רשימת JSON של מחרוזות (strings).
   `;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        temperature: 0.2
+      }
     });
     return JSON.parse(response.text?.trim() || "[]");
   } catch {
-    return ["לא הצלחנו לפרט את ההמלצה כרגע."];
+    return ["ודאו קיום פגישת סנכרון שבועית קבועה", "הגדירו מחדש את סמכויות קבלת ההחלטות בכל צד", "צרו ערוץ תקשורת ישיר לפתרון בעיות בזמן אמת"];
   }
 };
