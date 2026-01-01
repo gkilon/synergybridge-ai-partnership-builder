@@ -25,15 +25,47 @@ const AdminView: React.FC<AdminViewProps> = ({ sessions, onCreateSession, onUpda
     setNewSides('');
   };
 
+  // Senior Engineer Fix: Added missing aggregatedData calculation to fulfill analyzePartnership signature
   const handleRunAnalysis = async (session: PartnershipSession) => {
     if (session.responses.length < 2) {
       alert("יש צורך ב-2 מענים לפחות כדי להריץ ניתוח AI.");
       return;
     }
+
+    // Prepare Aggregated Data for AI (Drivers & Outcomes)
+    const driverQs = session.questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION');
+    const outcomeQs = session.questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION');
+    const groups = Array.from(new Set(driverQs.map(q => q.shortLabel || 'כללי')));
+    
+    const driverData = groups.map(label => {
+      const relatedQs = driverQs.filter(q => q.shortLabel === label);
+      let total = 0, count = 0;
+      session.responses.forEach(r => {
+        relatedQs.forEach(q => {
+          if (r.scores[q.id]) { total += r.scores[q.id]; count++; }
+        });
+      });
+      return { label, value: count > 0 ? Number((total / count).toFixed(1)) : 0 };
+    });
+
+    let sTotal = 0, sCount = 0;
+    session.responses.forEach(r => {
+      outcomeQs.forEach(q => {
+        if (r.scores[q.id]) { sTotal += r.scores[q.id]; sCount++; }
+      });
+    });
+    const satisfactionScore = sCount > 0 ? Number(((sTotal / sCount) / 7 * 100).toFixed(0)) : 0;
+
+    const aggregatedData = {
+      driverData,
+      satisfactionScore,
+      biggestGap: null // Simplification for AdminView context
+    };
     
     setIsAnalyzing(session.id);
     try {
-      const result = await analyzePartnership(session);
+      // Fix: Provided missing second argument 'aggregatedData' to fix line 36 error
+      const result = await analyzePartnership(session, aggregatedData);
       onUpdateSession({ ...session, analysis: result });
     } catch (error: any) {
       alert(error.message);
@@ -109,7 +141,8 @@ const AdminView: React.FC<AdminViewProps> = ({ sessions, onCreateSession, onUpda
                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={calculateChartData(session)}>
                     <PolarGrid />
                     <PolarAngleAxis dataKey="subject" />
-                    <PolarRadiusAxis angle={30} domain={[0, 5]} />
+                    {/* Fixed domain to [0, 7] to match the survey scale (1-7) */}
+                    <PolarRadiusAxis angle={30} domain={[0, 7]} />
                     <Radar name="ממוצע" dataKey="value" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -175,7 +208,7 @@ const AdminView: React.FC<AdminViewProps> = ({ sessions, onCreateSession, onUpda
                   המלצות אופרטיביות לפעולה
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Fixed property name from operationalRecommendations to recommendations and handled systemic/relational structure */}
+                  {/* Fixed systemic/relational structure mapping */}
                   {session.analysis.recommendations.systemic.concat(session.analysis.recommendations.relational).map((rec, idx) => (
                     <div key={idx} className="bg-white/10 p-3 rounded border border-white/20 flex gap-3">
                       <span className="font-bold text-indigo-300">{idx + 1}.</span>

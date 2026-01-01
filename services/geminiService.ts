@@ -1,43 +1,38 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
-export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  // @ts-ignore
-  const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
-  const ai = new GoogleGenAI({ apiKey });
+// Senior Engineer Fix: Consolidating GenAI interaction to adhere to strict coding guidelines
+export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
+  // Always obtain API key exclusively from process.env.API_KEY as per GenAI guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const formattedData = {
-    title: session.title,
-    context: session.context,
-    sides: session.sides,
-    responses: session.responses.map(r => ({
-      side: r.side,
-      scores: r.scores,
-      comments: r.comments
-    }))
-  };
-
   const prompt = `
-    משימה: בצע ניתוח אסטרטגי עמוק לממשק ארגוני.
+    תפקיד: יועץ בכיר לבניית שותפויות וממשקים ארגוניים.
+    משימה: ניתוח פרגמטי עמוק של ממשק עבודה בין יחידות.
     
-    מתודולוגיה מחייבת: ${PARTNERSHIP_METHODOLOGY}
+    מתודולוגיה: ${PARTNERSHIP_METHODOLOGY}
     
-    נתונים גולמיים: ${JSON.stringify(formattedData)}
+    נתוני הניתוח (Drivers & Outcomes):
+    - כותרת הממשק: ${session.title}
+    - הקשר: ${session.context || 'לא צוין'}
+    - מדד שביעות רצון ואפקטיביות (Target): ${aggregatedData.satisfactionScore}%
+    - ממוצעי דרייברים (1-7): ${JSON.stringify(aggregatedData.driverData)}
+    - פער תפיסה מקסימלי: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (${aggregatedData.biggestGap.value} נקודות)` : 'אין פערים מהותיים'}
 
-    הנחיות לניתוח:
-    1. השתמש במודל 5 התנאים (אג'נדה, תפקידים, החלטות, שגרות, יחסים).
-    2. זהה חוזקות וחולשות בכל צד (מערכתי ויחסים).
-    3. בצע "ניתוח השפעה" - איך הדרייברים משפיעים על שביעות הרצון (q23, q24).
-    4. זהה פערי תפיסה (Gaps) בין הצדדים - איפה יש חוסר הלימה?
+    הנחיות קשיחות:
+    1. אל תצטט שאלות או קודים של שאלות (כמו q1, q23).
+    2. אל תחזור על הנתונים המספריים - נתח את המשמעות שלהם.
+    3. התמקד ב"יישות השלישית" - מה הבעיה המבנית בממשק הזה?
+    4. ספק המלצות פרגמטיות שאפשר להתחיל ליישם מחר בבוקר.
 
-    החזר JSON במבנה המדויק הבא:
+    החזר JSON במבנה:
     {
-      "strengths": { "systemic": ["חוזקה 1", "..."], "relational": ["חוזקה 1", "..."] },
-      "weaknesses": { "systemic": ["חולשה 1", "..."], "relational": ["חולשה 1", "..."] },
-      "recommendations": { "systemic": ["המלצה 1", "..."], "relational": ["המלצה 1", "..."] },
-      "summary": "סיכום אסטרטגי קצר (עד 4 שורות) על מצב 'היישות השלישית' והמשתנה שהכי משפיע כרגע."
+      "strengths": { "systemic": [], "relational": [] },
+      "weaknesses": { "systemic": [], "relational": [] },
+      "recommendations": { "systemic": [], "relational": [] },
+      "summary": "ניתוח אסטרטגי קצר ונוקב על 'צוואר הבקבוק' של הממשק והשפעתו על השורה התחתונה."
     }
   `;
 
@@ -47,12 +42,15 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
       contents: prompt,
       config: { 
         responseMimeType: "application/json",
-        temperature: 0.7
+        temperature: 0.6
       }
     });
-    return JSON.parse(response.text || "{}");
-  } catch (error) {
+
+    // Safely extract text from GenerateContentResponse as a property (not a method)
+    const jsonStr = response.text?.trim() || "{}";
+    return JSON.parse(jsonStr);
+  } catch (error: any) {
     console.error("AI Analysis failed:", error);
-    throw new Error("המערכת נכשלה בניתוח הנתונים. וודא שמפתח ה-API תקין.");
+    throw new Error("המערכת נכשלה ביצירת התובנות. בדוק חיבור ומפתח API.");
   }
 };
