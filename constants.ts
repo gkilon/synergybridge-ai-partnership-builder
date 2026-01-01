@@ -26,58 +26,60 @@ export const PARTNERSHIP_METHODOLOGY = `
 `;
 
 export const DEFAULT_QUESTIONS: Question[] = [
-  // --- צד המערכתי: מנגנון העבודה (אג'נדה, תפקידים, החלטות, שגרות) ---
-  { id: 'q1', category: Category.SYSTEMIC, text: 'המטרות המשותפות ברורות', shortLabel: 'מטרות' },
-  { id: 'q2', category: Category.SYSTEMIC, text: 'יש הסכמה על סדרי העדיפויות להשגת המטרות', shortLabel: 'עדיפויות' },
-  { id: 'q3', category: Category.SYSTEMIC, text: 'קיימים יעדים מדידים ומפורטים', shortLabel: 'יעדים' },
-  // FIX: Using double quotes to prevent syntax errors with Hebrew apostrophes in single-quoted strings
-  { id: 'q4', category: Category.SYSTEMIC, text: "קיימת תחושה של אג'נדה משותפת", shortLabel: "אג'נדה" },
+  // --- צד המערכתי ---
+  { id: 'q1', category: Category.SYSTEMIC, text: 'המטרות המשותפות ברורות', shortLabel: 'אג\'נדה ומטרות' },
+  { id: 'q2', category: Category.SYSTEMIC, text: 'יש הסכמה על סדרי העדיפויות להשגת המטרות', shortLabel: 'אג\'נדה ומטרות' },
+  { id: 'q3', category: Category.SYSTEMIC, text: 'קיימים יעדים מדידים ומפורטים', shortLabel: 'אג\'נדה ומטרות' },
+  { id: 'q4', category: Category.SYSTEMIC, text: "קיימת תחושה של אג'נדה משותפת", shortLabel: "אג'נדה ומטרות" },
   
   { id: 'q5', category: Category.SYSTEMIC, text: 'התפקידים ותחומי האחריות ברורים ומובנים לחברי השותפות', shortLabel: 'תפקידים' },
-  { id: 'q6', category: Category.SYSTEMIC, text: 'לכל אחד ברור מה מצופה ממנו', shortLabel: 'ציפיות' },
-  { id: 'q7', category: Category.SYSTEMIC, text: 'תחומי האחריות הינם הגיוניים וניתנים למימוש', shortLabel: 'אחריות' },
+  { id: 'q6', category: Category.SYSTEMIC, text: 'לכל אחד ברור מה מצופה ממנו', shortLabel: 'תפקידים' },
+  { id: 'q7', category: Category.SYSTEMIC, text: 'תחומי האחריות הינם הגיוניים וניתנים למימוש', shortLabel: 'תפקידים' },
   
-  { id: 'q8', category: Category.SYSTEMIC, text: 'כאשר נדרשת החלטה ברור מי ואיך צריך לקבל אותה', shortLabel: 'החלטות' },
-  { id: 'q9', category: Category.SYSTEMIC, text: 'ההחלטות המתקבלות הן ברורות וישימות', shortLabel: 'ביצוע החלטה' },
-  { id: 'q10', category: Category.SYSTEMIC, text: 'חברי השותפות מחויבים להחלטות שקיבלו', shortLabel: 'מחויבות' },
-  { id: 'q11', category: Category.SYSTEMIC, text: 'כאשר מתעוררים חילוקי דעות יודעים לנהל ולפתור אותם', shortLabel: 'קונפליקטים' },
+  { id: 'q8', category: Category.SYSTEMIC, text: 'כאשר נדרשת החלטה ברור מי ואיך צריך לקבל אותה', shortLabel: 'קבלת החלטות' },
+  { id: 'q9', category: Category.SYSTEMIC, text: 'ההחלטות המתקבלות הן ברורות וישימות', shortLabel: 'קבלת החלטות' },
+  { id: 'q10', category: Category.SYSTEMIC, text: 'חברי השותפות מחויבים להחלטות שקיבלו', shortLabel: 'קבלת החלטות' },
+  { id: 'q11', category: Category.SYSTEMIC, text: 'כאשר מתעוררים חילוקי דעות יודעים לנהל ולפתור אותם', shortLabel: 'קבלת החלטות' },
   
-  { id: 'q12', category: Category.SYSTEMIC, text: 'תהליכי העבודה המשותפים איכותיים ומקדמים את השגת המטרות', shortLabel: 'תהליכים' },
-  { id: 'q13', category: Category.SYSTEMIC, text: 'קיימות שגרות עבודה משותפות מספקות', shortLabel: 'שגרות' },
-  { id: 'q14', category: Category.SYSTEMIC, text: 'אין בירוקרטיה ובזבוזי זמן מיותרים', shortLabel: 'יעילות' },
+  { id: 'q12', category: Category.SYSTEMIC, text: 'תהליכי העבודה המשותפים איכותיים ומקדמים את השגת המטרות', shortLabel: 'תהליכים ושגרות' },
+  { id: 'q13', category: Category.SYSTEMIC, text: 'קיימות שגרות עבודה משותפות מספקות', shortLabel: 'תהליכים ושגרות' },
+  { id: 'q14', category: Category.SYSTEMIC, text: 'אין בירוקרטיה ובזבוזי זמן מיותרים', shortLabel: 'תהליכים ושגרות' },
 
-  // --- צד היחסים: כבוד, אמון, תקשורת ---
-  { id: 'q15', category: Category.RELATIONAL, text: 'חברי השותפות מכבדים את הזמן אחד של השני', shortLabel: 'כבוד לזמן' },
-  { id: 'q16', category: Category.RELATIONAL, text: 'קיימת הערכה לשונות ולערך המוסף אחד של השני', shortLabel: 'ערך מוסף' },
-  { id: 'q17', category: Category.RELATIONAL, text: 'קיימת נורמה של היוועצות הדדית בנושאים הרלוונטיים', shortLabel: 'היוועצות' },
-  { id: 'q18', category: Category.RELATIONAL, text: 'חברי השותפות עומדים בהתחייבויותיהם', shortLabel: 'אמינות' },
+  // --- צד היחסים ---
+  { id: 'q15', category: Category.RELATIONAL, text: 'חברי השותפות מכבדים את הזמן אחד של השני', shortLabel: 'כבוד הדדי' },
+  { id: 'q16', category: Category.RELATIONAL, text: 'קיימת הערכה לשונות ולערך המוסף אחד של השני', shortLabel: 'כבוד הדדי' },
+  { id: 'q17', category: Category.RELATIONAL, text: 'קיימת נורמה של היוועצות הדדית בנושאים הרלוונטיים', shortLabel: 'כבוד הדדי' },
+  { id: 'q18', category: Category.RELATIONAL, text: 'חברי השותפות עומדים בהתחייבויותיהם', shortLabel: 'כבוד הדדי' },
   
-  { id: 'q19', category: Category.RELATIONAL, text: 'המידע שאני צריך הינו זמין עבורי', shortLabel: 'זמינות מידע' },
-  { id: 'q20', category: Category.RELATIONAL, text: 'שמים דברים על השולחן ולא נרתעים להביע דעה', shortLabel: 'פתיחות' },
-  { id: 'q21', category: Category.RELATIONAL, text: 'ישנה לקיחה של אחריות ודיווח על תקלות וטעויות', shortLabel: 'אחריות אישית' },
-  { id: 'q22', category: Category.RELATIONAL, text: 'קיימת אווירת עבודה נעימה וזורמת', shortLabel: 'אווירה' },
+  { id: 'q19', category: Category.RELATIONAL, text: 'המידע שאני צריך הינו זמין עבורי', shortLabel: 'תקשורת פתוחה' },
+  { id: 'q20', category: Category.RELATIONAL, text: 'שמים דברים על השולחן ולא נרתעים להביע דעה', shortLabel: 'תקשורת פתוחה' },
+  { id: 'q21', category: Category.RELATIONAL, text: 'ישנה לקיחה של אחריות ודיווח על תקלות וטעויות', shortLabel: 'תקשורת פתוחה' },
+  { id: 'q22', category: Category.RELATIONAL, text: 'קיימת אווירת עבודה נעימה וזורמת', shortLabel: 'תקשורת פתוחה' },
+
+  // --- מדדי תוצאה (Outcome Metrics) ---
+  { id: 'q23', category: Category.SYSTEMIC, text: 'מהי מידת האפקטיביות של השותפות לדעתך?', shortLabel: 'אפקטיביות גלובלית' },
+  { id: 'q24', category: Category.RELATIONAL, text: 'עד כמה אתה שבע רצון מהשותפות בממשק זה?', shortLabel: 'שביעות רצון' },
 ];
 
 export const ANALYSIS_PROMPT_TEMPLATE = `
 כמערכת AI בכירה לייעוץ אסטרטגי, עליך לנתח את השותפות הארגונית על בסיס המתודולוגיה המקצועית של "השותפות האקטיבית".
 
 הנחיות לניתוח (לפי המתודולוגיה):
-1. התייחס לממשק כאל "היישות השלישית" - מה היישות הזו צריכה כדי לשגשג?
-2. נתח את הנתונים דרך "גלגל השותפויות" (ייעוד, תפקידים, החלטות, שגרות, נורמות).
-3. זהה איפה חסר ה-Mindset של "ויתור ורווח".
+1. התייחס לממשק כאל "היישות השלישית".
+2. נתח את הנתונים דרך 6 אשכולות: אג'נדה, תפקידים, החלטות, תהליכים, כבוד, ותקשורת.
+3. ניתוח השפעה (Impact Analysis): השתמש במדדי התוצאה (שאלות 23-24) כדי להבין מהו המשתנה המשפיע ביותר (The Key Driver). זהה איזה מהפרמטרים בממשק הוא בעל המתאם החזק ביותר לשביעות הרצון והאפקטיביות.
 4. הבחן בין ציר המשימה לציר היחסים וכיצד הם משפיעים זה על זה.
 
 דרישות הפלט:
-- ניתוח תמונת מצב אסטרטגית: הסבר מעמיק המשלב את עקרונות המודל.
-- ניתוח צולב (Impact Analysis): איך חולשה בציר המשימה פוגעת בציר היחסים (למשל: עמימות בתפקידים שיוצרת חוסר אמון).
-- זיהוי פערים קריטיים: השוואה בין תפיסות הצדדים.
-- תוכנית עבודה אופרטיבית: 5 המלצות קונקרטיות המבוססות על שיפור "גלגל השותפויות".
+- ניתוח תמונת מצב אסטרטגית מפורט.
+- זיהוי "הגורם המשפיע" (The Key Driver): איזה פרמטר הוא המפתח להצלחה או הכישלון כאן.
+- תוכנית עבודה אופרטיבית: 5 המלצות קונקרטיות.
 
 החזר את התשובה בפורמט JSON בלבד, בעברית מקצועית וגבוהה:
 {
   "strengths": { "systemic": ["חוזקה מפורטת 1"], "relational": ["חוזקה מפורטת 1"] },
   "weaknesses": { "systemic": ["חולשה מפורטת 1"], "relational": ["חולשה מפורטת 1"] },
-  "operationalRecommendations": ["המלצה מבוססת מתודולוגיה 1", "המלצה מבוססת מתודולוגיה 2", "המלצה 3", "המלצה 4", "המלצה 5"],
-  "summary": "דוח מפורט הכולל ניתוח השפעה בראי 'היישות השלישית'..."
+  "operationalRecommendations": ["המלצה 1", "המלצה 2", "המלצה 3", "המלצה 4", "המלצה 5"],
+  "summary": "דוח מפורט הכולל ניתוח השפעה וזיהוי ה-Key Driver..."
 }
 `;

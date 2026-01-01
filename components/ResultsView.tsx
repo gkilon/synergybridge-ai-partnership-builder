@@ -41,12 +41,21 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     }
   };
 
+  // Define the 6 main pillars we want to show on the radar
+  const PROCESS_PILLARS = [
+    'אג\'נדה ומטרות',
+    'תפקידים',
+    'קבלת החלטות',
+    'תהליכים ושגרות',
+    'כבוד הדדי',
+    'תקשורת פתוחה'
+  ];
+
   const chartData = useMemo(() => {
-    const labels = Array.from(new Set(session.questions.map(q => q.shortLabel || 'אחר')));
-    
-    return labels.map(label => {
-      const dataPoint: any = { subject: label };
-      const relatedQuestions = session.questions.filter(q => q.shortLabel === label);
+    return PROCESS_PILLARS.map(pillarLabel => {
+      const dataPoint: any = { subject: pillarLabel };
+      const relatedQuestions = session.questions.filter(q => q.shortLabel === pillarLabel);
+      
       let totalAllSides = 0;
       let countAllSides = 0;
 
@@ -74,6 +83,22 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     });
   }, [session]);
 
+  // Global Performance score based on q23, q24
+  const globalOutcomeData = useMemo(() => {
+    const qIds = ['q23', 'q24'];
+    let total = 0;
+    let count = 0;
+    session.responses.forEach(r => {
+      qIds.forEach(id => {
+        if (r.scores[id]) {
+          total += r.scores[id];
+          count++;
+        }
+      });
+    });
+    return count > 0 ? (total / count) : 0;
+  }, [session.responses]);
+
   const sortedParams = useMemo(() => {
     return [...chartData].sort((a, b) => b.average - a.average);
   }, [chartData]);
@@ -82,15 +107,13 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   const weakest = [...sortedParams].reverse().slice(0, 3);
 
   const overallHealthMeta = useMemo(() => {
-    if (chartData.length === 0) return { label: 'ממתין לנתונים', color: 'text-zinc-500', bg: 'bg-zinc-500/10' };
-    const sum = chartData.reduce((acc, p) => acc + p.average, 0);
-    const score = (sum / (chartData.length * 7)) * 100;
+    const score = (globalOutcomeData / 7) * 100;
 
     if (score >= 80) return { label: 'שותפות מעולה', color: 'text-emerald-400', bg: 'bg-emerald-400/10', desc: 'הממשק פועל ברמת סנכרון ושותפות יוצאת דופן.' };
     if (score >= 60) return { label: 'ממשק טוב', color: 'text-indigo-400', bg: 'bg-indigo-400/10', desc: 'יש בסיס עבודה בריא עם מרחב לשיפור ביצועים.' };
-    if (score >= 30) return { label: 'יש עוד מה לעבוד', color: 'text-amber-400', bg: 'bg-amber-400/10', desc: 'נדרשת השקעה ממוקדת בבניית הממשק והאמון.' };
+    if (score >= 35) return { label: 'יש עוד מה לעבוד', color: 'text-amber-400', bg: 'bg-amber-400/10', desc: 'נדרשת השקעה ממוקדת בבניית הממשק והאמון.' };
     return { label: 'ממשק טעון שיפור', color: 'text-rose-400', bg: 'bg-rose-400/10', desc: 'קיימים חסמים קריטיים המעכבים את הפעילות המשותפת.' };
-  }, [chartData]);
+  }, [globalOutcomeData]);
 
   const perceptionGapMeta = useMemo(() => {
     if (session.sides.length < 2) return null;
@@ -132,17 +155,15 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       {/* Hero Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         
-        {/* Status Card (Qualitative Only) */}
+        {/* Status Card (Outcome Oriented) */}
         <div className="md:col-span-4 glass rounded-[3rem] p-12 flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden group border-indigo-500/10">
            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-           <h4 className="text-zinc-500 font-black text-[10px] uppercase tracking-[0.3em] relative z-10">סטטוס השותפות</h4>
+           <h4 className="text-zinc-500 font-black text-[10px] uppercase tracking-[0.3em] relative z-10">מדד אפקטיביות ורצון</h4>
            
            <div className={`w-44 h-44 rounded-full flex items-center justify-center relative z-10 ${overallHealthMeta.bg} border border-white/5 shadow-2xl transition-all group-hover:scale-105 duration-700`}>
               <div className="absolute inset-0 rounded-full animate-pulse-slow opacity-10 bg-current"></div>
               <div className="absolute inset-4 rounded-full border-2 border-dashed border-white/10 opacity-30"></div>
-              <svg className={`w-24 h-24 ${overallHealthMeta.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+              <div className="text-4xl font-black">{globalOutcomeData.toFixed(1)}</div>
            </div>
            
            <div className="space-y-4 relative z-10">

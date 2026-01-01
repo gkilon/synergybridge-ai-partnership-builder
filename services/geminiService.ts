@@ -3,9 +3,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 import { ANALYSIS_PROMPT_TEMPLATE, PARTNERSHIP_METHODOLOGY } from "../constants";
 
-// Function to analyze partnership using Gemini API
+/**
+ * Analyzes the partnership data using the Gemini AI model.
+ * Strictly follows the @google/genai coding guidelines.
+ */
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  // CRITICAL: Always create a new GoogleGenAI instance right before the call to ensure it uses the latest API key.
+  // CRITICAL: Always create a new GoogleGenAI instance right before making an API call 
+  // to ensure it always uses the most up-to-date API key.
   // The API key must be obtained exclusively from process.env.API_KEY.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
@@ -32,9 +36,10 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
     נתוני הממשק והקשר ארגוני לניתוח:
     ${JSON.stringify(formattedData, null, 2)}
 
-    שים לב: 
-    - הנתונים כוללים את ה"צד" (sideRepresented) של כל משיב. השווה בין תפיסות הצדדים בראי המתודולוגיה.
-    - ההקשר (context) מסביר את יחסי התלות - השתמש במושגי "ויתור ורווח" כדי להסביר את התלות הזו.
+    שים לב במיוחד (דרישת ניתוח השפעה): 
+    - השתמש בשאלות 23 (אפקטיביות) ו-24 (שביעות רצון) כמשתני מטרה. 
+    - בצע ניתוח דמוי רגרסיה לינארית כדי לזהות איזה מבין 6 האשכולות (אג'נדה, תפקידים, החלטות, תהליכים, כבוד, תקשורת) הוא המשפיע (Influencer) החזק ביותר על שביעות הרצון והאפקטיביות בממשק זה.
+    - ציין במפורש בסיכום המנהלים מהו ה-Key Driver שזיהית.
   `;
 
   try {
@@ -66,22 +71,25 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
               type: Type.ARRAY,
               items: { type: Type.STRING }
             },
-            summary: { type: Type.STRING }
+            summary: { type: Type.STRING, description: "סיכום אסטרטגי הכולל זיהוי הגורם המשפיע ביותר (Key Driver) על הצלחת השותפות." }
           },
           required: ['strengths', 'weaknesses', 'operationalRecommendations', 'summary']
         }
       }
     });
 
-    // Directly access .text property from the response as it is a property, not a method.
+    // Directly access .text property from the response (it's a property, not a method).
     const text = response.text || "{}";
     return JSON.parse(text);
   } catch (error: any) {
     console.error("AI Analysis failed:", error);
-    // Handle specific API errors as requested in guidelines (e.g., entity not found / API key issues)
-    if (error?.message?.includes("entity was not found") || error?.message?.includes("API Key")) {
+    
+    // If the request fails with an error message containing "Requested entity was not found.", 
+    // it often indicates an API key selection issue in specific environments.
+    if (error?.message?.includes("Requested entity was not found") || error?.message?.includes("API Key")) {
       throw new Error("AUTH_ERROR");
     }
-    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע. וודא שהגדרת מפתח API תקין.");
+    
+    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע. וודא שהגדרת מפתח API תקין ונסה שוב.");
   }
 };
