@@ -1,11 +1,9 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
-import { ANALYSIS_PROMPT_TEMPLATE } from "../constants";
+import { ANALYSIS_PROMPT_TEMPLATE, PARTNERSHIP_METHODOLOGY } from "../constants";
 
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  // Always fetch the key at the moment of request. 
-  // We prioritize process.env.API_KEY as per system requirements but allow VITE fallback for local development if needed.
   const apiKey = (process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || "").trim();
   
   if (!apiKey) {
@@ -27,14 +25,19 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
   };
 
   const prompt = `
+    מתודולוגיית עבודה (KNOWLEDGE BASE):
+    ${PARTNERSHIP_METHODOLOGY}
+
+    ---
+    
     ${ANALYSIS_PROMPT_TEMPLATE}
     
-    נתוני הממשק והקשר ארגוני:
+    נתוני הממשק והקשר ארגוני לניתוח:
     ${JSON.stringify(formattedData, null, 2)}
 
     שים לב: 
-    - הנתונים כוללים את ה"צד" (sideRepresented) של כל משיב. השווה בין תפיסות הצדדים.
-    - ההקשר (context) מסביר את יחסי התלות - התחשב בזה בהמלצות האופרטיביות.
+    - הנתונים כוללים את ה"צד" (sideRepresented) של כל משיב. השווה בין תפיסות הצדדים בראי המתודולוגיה.
+    - ההקשר (context) מסביר את יחסי התלות - השתמש במושגי "ויתור ורווח" כדי להסביר את התלות הזו.
   `;
 
   try {
