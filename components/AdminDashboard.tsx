@@ -21,7 +21,7 @@ const AdminDashboard: React.FC<Props> = ({
   initialEditingId, forceShowAdd, onCancel 
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isBypassed, setIsBypassed] = useState(false); // מאפשר עבודה מקומית ללא התחברות
+  const [isBypassed, setIsBypassed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
   const [newSides, setNewSides] = useState('');
@@ -40,113 +40,102 @@ const AdminDashboard: React.FC<Props> = ({
         setNewTitle(s.title);
         setNewSides(s.sides.join(', '));
         setNewContext(s.context || '');
-        setEditingQuestions(s.questions);
+        setEditingQuestions(s.questions || DEFAULT_QUESTIONS);
       }
+    } else {
+      setNewTitle('');
+      setNewSides('');
+      setNewContext('');
+      setEditingQuestions(DEFAULT_QUESTIONS);
     }
   }, [initialEditingId, sessions]);
 
   if (loading) return null;
 
-  // חסימת גישה מוחלטת לאדמין - אלא אם המשתמש בחר להמשיך מקומית
   if (!user && !isBypassed) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-10 animate-fadeIn text-center">
         <div className="w-28 h-28 bg-indigo-500/10 rounded-[2.5rem] flex items-center justify-center border border-indigo-500/20 shadow-2xl relative">
           <svg className="w-14 h-14 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center">
-             <div className={`w-2 h-2 rounded-full animate-pulse ${dbService.isCloudActive() ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-          </div>
         </div>
         <div className="space-y-4 max-w-md">
           <h2 className="text-4xl font-black text-white">כניסת מנהל</h2>
-          <p className="text-zinc-400 font-medium leading-relaxed">
-            {dbService.isCloudActive() 
-              ? "התחבר כדי לסנכרן את הממשקים שלך בין המחשב לטלפון." 
-              : "הגדרות ענן לא נמצאו. המידע יישמר מקומית על מכשיר זה בלבד עד להגדרת בסיס נתונים."}
-          </p>
+          <p className="text-zinc-400 font-medium leading-relaxed">נהל ממשקים, ערוך שאלונים וצפה בדו"חות אסטרטגיים.</p>
         </div>
         <div className="space-y-4 w-full max-w-sm">
-          {dbService.isCloudActive() ? (
-            <button 
-              onClick={() => dbService.loginAsAdmin()}
-              className="w-full bg-white text-black px-10 py-5 rounded-2xl font-black hover:bg-zinc-200 transition-all flex items-center justify-center gap-4 shadow-2xl shadow-white/5 active:scale-95"
-            >
-              <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="google" />
-              התחבר עם Google לסנכרון
-            </button>
-          ) : (
-            <button 
-              onClick={() => setIsBypassed(true)}
-              className="w-full bg-indigo-600 text-white px-10 py-5 rounded-2xl font-black hover:bg-indigo-500 transition-all flex items-center justify-center gap-4 shadow-2xl shadow-indigo-600/20 active:scale-95"
-            >
-              המשך במצב מקומי (ללא סנכרון)
-            </button>
-          )}
-          
-          {dbService.isCloudActive() && (
-            <button 
-              onClick={() => setIsBypassed(true)}
-              className="text-zinc-500 text-xs font-bold hover:text-zinc-300 transition-colors uppercase tracking-widest"
-            >
-              או המשך ללא התחברות (למכשיר זה בלבד)
-            </button>
-          )}
+          <button 
+            onClick={() => dbService.loginAsAdmin()}
+            className="w-full bg-white text-black px-10 py-5 rounded-2xl font-black hover:bg-zinc-200 transition-all flex items-center justify-center gap-4 shadow-2xl active:scale-95"
+          >
+            <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="google" />
+            כניסה עם Google
+          </button>
+          <button 
+            onClick={() => setIsBypassed(true)}
+            className="text-zinc-500 text-xs font-bold hover:text-zinc-300 transition-colors uppercase tracking-widest block w-full"
+          >
+            או המשך ללא התחברות (מצב הדגמה)
+          </button>
         </div>
       </div>
     );
   }
 
-  if (forceShowAdd) {
+  if (forceShowAdd || initialEditingId) {
     return (
-      <div className="max-w-4xl mx-auto space-y-10 animate-slideDown">
-        <div className="glass p-8 md:p-12 rounded-[2.5rem] border-indigo-500/20 space-y-10 shadow-2xl relative">
-          <div className="absolute top-6 left-6 flex items-center gap-2">
-             <div className={`w-2 h-2 rounded-full ${dbService.isCloudActive() ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-             <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-               {user ? `מחובר: ${user.email}` : 'מצב מקומי - ללא סנכרון ענן'}
-             </span>
-          </div>
+      <div className="max-w-5xl mx-auto space-y-10 animate-slideDown pb-20">
+        <div className="glass p-8 md:p-12 rounded-[3rem] border-zinc-800 space-y-10 shadow-3xl">
           <div className="flex justify-between items-center">
-            <h3 className="text-3xl font-black text-indigo-400">
-              {initialEditingId ? 'עריכת ממשק' : 'הגדרת ממשק חדש'}
+            <h3 className="text-4xl font-black text-white">
+              {initialEditingId ? 'הגדרות ממשק' : 'ממשק חדש'}
             </h3>
-            <button onClick={onCancel} className="text-zinc-500 hover:text-white font-bold transition-colors">ביטול וחזרה</button>
+            <button onClick={onCancel} className="bg-zinc-900 text-zinc-400 px-6 py-2 rounded-xl font-bold hover:text-white transition-colors">ביטול</button>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-zinc-500 uppercase tracking-widest">שם הממשק</label>
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">שם הממשק האסטרטגי</label>
               <input 
-                placeholder="למשל: תפעול ומכירות"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all text-white font-bold"
+                placeholder="למשל: יחידת תפעול - מחוז מרכז"
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 focus:border-indigo-500 outline-none transition-all text-white font-black text-xl"
                 value={newTitle} onChange={e => setNewTitle(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black text-zinc-500 uppercase tracking-widest">צדדים מעורבים (מופרדים בפסיק)</label>
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">שמות הצדדים (פסיק מפריד)</label>
               <input 
                 placeholder="צד א', צד ב'"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all text-white font-bold"
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 focus:border-indigo-500 outline-none transition-all text-white font-bold"
                 value={newSides} onChange={e => setNewSides(e.target.value)}
               />
             </div>
-            <div className="md:col-span-2 space-y-2">
-              <label className="text-xs font-black text-zinc-500 uppercase tracking-widest">הקשר ארגוני ותלות (איך הממשק עובד? מי מעביר למי?)</label>
+            <div className="md:col-span-2 space-y-3">
+              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">הקשר ארגוני ותלות הדדית</label>
               <textarea 
-                rows={4}
-                placeholder="תאר כאן את תהליך העבודה בין הצדדים, מי הלקוח ומי הספק..."
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 focus:border-indigo-500 outline-none transition-all text-white font-medium resize-none"
+                rows={3}
+                placeholder="תאר את הצורך בשיתוף הפעולה, נקודות הממשק הקריטיות ומידת התלות..."
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 focus:border-indigo-500 outline-none transition-all text-white font-medium resize-none"
                 value={newContext} onChange={e => setNewContext(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="space-y-4">
-             <label className="text-xs font-black text-zinc-500 uppercase tracking-widest block mb-4">ניהול קריטריונים להערכה</label>
-             <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-6 pt-6 border-t border-zinc-800">
+             <div className="flex justify-between items-center">
+                <label className="text-xl font-black text-white">מבנה השאלון (16 פרמטרים)</label>
+                <button 
+                  onClick={() => setEditingQuestions([...editingQuestions, { id: Date.now().toString(), text: 'שאלה חדשה', shortLabel: 'פרמטר', category: Category.SYSTEMIC }])}
+                  className="text-xs font-black bg-indigo-500/10 text-indigo-400 px-4 py-2 rounded-xl border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all"
+                >
+                  + הוסף היבט לבדיקה
+                </button>
+             </div>
+             
+             <div className="grid grid-cols-1 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 {editingQuestions.map((q, idx) => (
-                  <div key={q.id} className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 group hover:border-zinc-700 transition-colors space-y-4">
-                    <div className="flex gap-3 items-center">
+                  <div key={q.id} className="bg-zinc-900/40 p-5 rounded-2xl border border-zinc-800 flex flex-col gap-4 group hover:border-indigo-500/30 transition-all">
+                    <div className="flex gap-4 items-center">
+                      <span className="text-zinc-700 font-black text-lg">{idx + 1}</span>
                       <input 
                         value={q.text}
                         onChange={e => {
@@ -154,8 +143,7 @@ const AdminDashboard: React.FC<Props> = ({
                           next[idx].text = e.target.value;
                           setEditingQuestions(next);
                         }}
-                        className="flex-grow bg-transparent outline-none border-none text-sm text-zinc-200 font-bold"
-                        placeholder="תיאור השאלה המלא..."
+                        className="flex-grow bg-transparent border-none text-white font-bold outline-none text-lg"
                       />
                       <button 
                         onClick={() => {
@@ -163,59 +151,52 @@ const AdminDashboard: React.FC<Props> = ({
                           next[idx].category = next[idx].category === Category.SYSTEMIC ? Category.RELATIONAL : Category.SYSTEMIC;
                           setEditingQuestions(next);
                         }}
-                        className={`text-[10px] font-black px-4 py-2 rounded-xl whitespace-nowrap transition-all border ${q.category === Category.SYSTEMIC ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}
+                        className={`text-[9px] font-black px-4 py-2 rounded-lg uppercase tracking-widest border transition-all ${q.category === Category.SYSTEMIC ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}
                       >
                         {q.category === Category.SYSTEMIC ? 'מערכתי' : 'יחסים'}
                       </button>
-                      <button 
-                        onClick={() => setEditingQuestions(editingQuestions.filter((_, i) => i !== idx))}
-                        className="text-zinc-600 hover:text-rose-500 transition-colors px-2"
-                      >
-                        ✕
-                      </button>
                     </div>
-                    <div className="flex items-center gap-4">
-                       <label className="text-[10px] font-black text-zinc-600 uppercase">מילה לגרף:</label>
-                       <input 
-                        value={q.shortLabel || ''}
-                        onChange={e => {
-                          const next = [...editingQuestions];
-                          next[idx].shortLabel = e.target.value;
-                          setEditingQuestions(next);
-                        }}
-                        className="bg-zinc-800 rounded-lg px-3 py-1 text-xs text-indigo-400 font-black border border-transparent focus:border-indigo-500 outline-none"
-                        placeholder="למשל: מטרה"
-                      />
+                    <div className="flex items-center gap-6 px-9">
+                       <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-zinc-600 uppercase">תגית גרף:</span>
+                          <input 
+                            value={q.shortLabel || ''}
+                            onChange={e => {
+                              const next = [...editingQuestions];
+                              next[idx].shortLabel = e.target.value;
+                              setEditingQuestions(next);
+                            }}
+                            className="bg-zinc-800/50 rounded-lg px-3 py-1 text-xs text-indigo-400 font-black border border-zinc-700 outline-none w-24"
+                          />
+                       </div>
+                       <button onClick={() => setEditingQuestions(editingQuestions.filter((_, i) => i !== idx))} className="text-zinc-700 hover:text-rose-500 transition-colors mr-auto">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                       </button>
                     </div>
                   </div>
                 ))}
              </div>
-             <button 
-                onClick={() => setEditingQuestions([...editingQuestions, { id: Date.now().toString(), text: 'קריטריון חדש', shortLabel: 'חדש', category: Category.SYSTEMIC }])}
-                className="text-xs font-black text-indigo-400 hover:text-indigo-300 flex items-center gap-2"
-              >
-                + הוסף קריטריון מותאם
-              </button>
           </div>
 
-          <div className="flex justify-end gap-4 pt-6">
+          <div className="flex justify-end gap-6 pt-10">
             <button 
               onClick={() => {
+                const sidesArr = newSides.split(',').map(s=>s.trim()).filter(s=>s);
                 if (initialEditingId && onUpdate) {
                   onUpdate({
                     ...sessions.find(s=>s.id === initialEditingId)!,
                     title: newTitle,
-                    sides: newSides.split(',').map(s=>s.trim()),
+                    sides: sidesArr,
                     context: newContext,
                     questions: editingQuestions
                   });
                 } else if (onAdd) {
-                  onAdd(newTitle, newSides.split(',').map(s=>s.trim()), editingQuestions, newContext);
+                  onAdd(newTitle, sidesArr, editingQuestions, newContext);
                 }
               }}
-              className="bg-indigo-600 px-12 py-4 rounded-2xl font-black hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 active:scale-95 text-white"
+              className="bg-indigo-600 px-16 py-5 rounded-[2rem] font-black text-lg hover:bg-indigo-500 transition-all shadow-2xl shadow-indigo-600/30 active:scale-95 text-white"
             >
-              {initialEditingId ? 'שמור שינויים' : 'צור שותפות וסנכרן'}
+              {initialEditingId ? 'עדכן הגדרות ממשק' : 'צור ממשק חדש'}
             </button>
           </div>
         </div>
@@ -227,85 +208,67 @@ const AdminDashboard: React.FC<Props> = ({
     <div className="space-y-12 animate-fadeIn pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h2 className="text-4xl font-black text-white">ממשקים פעילים</h2>
-            <div className={`px-3 py-1 border rounded-full flex items-center gap-2 ${dbService.isCloudActive() ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
-               <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${dbService.isCloudActive() ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-               <span className={`text-[9px] font-black uppercase tracking-widest ${dbService.isCloudActive() ? 'text-emerald-500' : 'text-amber-500'}`}>
-                 {dbService.isCloudActive() ? 'מסונכרן לענן' : 'שמירה מקומית בלבד'}
-               </span>
-            </div>
-          </div>
-          <p className="text-zinc-500 font-medium">ניהול ותצוגת תמונת המצב של כלל השותפויות בארגון עבור {user?.displayName || 'מנהל מערכת'}.</p>
+          <h2 className="text-5xl font-black text-white mb-2 tracking-tight">השותפויות שלי</h2>
+          <p className="text-zinc-500 font-medium text-lg">מעקב בזמן אמת אחר הבריאות הארגונית של הממשקים הפעילים.</p>
         </div>
-        {(user || isBypassed) && (
-          <button 
-            onClick={() => {
-              dbService.logout();
-              setIsBypassed(false);
-            }}
-            className="text-xs font-bold text-zinc-500 hover:text-rose-500 transition-colors"
-          >
-            {user ? 'התנתק מהחשבון' : 'חזור למסך כניסה'}
-          </button>
-        )}
+        <button 
+          onClick={() => { dbService.logout(); setIsBypassed(false); }}
+          className="text-xs font-black text-zinc-600 hover:text-zinc-400 uppercase tracking-widest"
+        >
+          התנתק מהמערכת
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
         {sessions.map(session => (
-          <div key={session.id} className="glass rounded-[2.5rem] p-8 space-y-8 flex flex-col group hover:border-indigo-500/40 transition-all duration-500 relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/[0.02] rounded-full translate-x-1/2 -translate-y-1/2"></div>
+          <div key={session.id} className="glass rounded-[3rem] p-10 flex flex-col group hover:border-indigo-500/50 transition-all duration-700 relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full translate-x-1/2 -translate-y-1/2 blur-2xl group-hover:bg-indigo-500/10 transition-colors"></div>
              
-             <div className="flex justify-between items-start relative z-10">
-                <div className="px-4 py-2 bg-zinc-900 rounded-2xl flex items-center gap-2 border border-zinc-800">
-                  <span className="text-indigo-500 font-black text-xl">{session.responses.length}</span>
-                  <span className="text-[10px] font-black text-zinc-600 uppercase tracking-tighter">מענים</span>
+             <div className="flex justify-between items-center mb-10 relative z-10">
+                <div className="flex flex-col">
+                   <span className="text-4xl font-black text-white">{session.responses.length}</span>
+                   <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">מענים שנאספו</span>
                 </div>
-                <div className="flex gap-2">
-                   <button 
-                    onClick={() => onOpenSettings?.(session.id)}
-                    className="w-10 h-10 bg-zinc-900/50 rounded-xl flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all"
-                   >
-                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                   </button>
-                </div>
+                <button onClick={() => onOpenSettings?.(session.id)} className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all border border-zinc-800">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                </button>
              </div>
              
-             <div className="flex-grow relative z-10">
-                <h3 className="text-2xl font-black text-white leading-tight">{session.title}</h3>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {session.sides.map(s => <span key={s} className="text-[10px] font-black px-3 py-1 bg-zinc-900 rounded-lg text-zinc-500 border border-zinc-800 uppercase tracking-tighter">{s}</span>)}
+             <div className="flex-grow mb-10 relative z-10">
+                <h3 className="text-3xl font-black text-white leading-tight mb-4">{session.title}</h3>
+                <div className="flex flex-wrap gap-2">
+                  {session.sides.map(s => <span key={s} className="text-[10px] font-black px-3 py-1 bg-zinc-900/50 rounded-lg text-indigo-400 border border-indigo-500/10 uppercase">{s}</span>)}
                 </div>
              </div>
 
-             <div className="space-y-3 pt-6 border-t border-zinc-800 relative z-10">
+             <div className="space-y-4 relative z-10">
                 <button 
                   onClick={() => onOpenResults?.(session.id)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-black transition-all shadow-lg shadow-indigo-600/10 active:scale-95"
+                  className="w-full bg-white text-black py-5 rounded-2xl font-black text-lg transition-all shadow-xl hover:scale-[1.02] active:scale-95"
                 >
-                  צפה בתוצאות וניתוח AI
+                  ניתוח אסטרטגי
                 </button>
                 <button 
                   onClick={() => {
                      const url = `${window.location.origin}${window.location.pathname}?sid=${session.id}`;
                      navigator.clipboard.writeText(url);
-                     alert('קישור השאלון הועתק ללוח! שלח אותו למשתתפים.');
+                     alert('קישור השאלון הועתק! ניתן להעביר למשתתפים.');
                   }}
-                  className="w-full bg-zinc-900/50 hover:bg-zinc-800 text-zinc-400 py-4 rounded-2xl font-black transition-all border border-zinc-800"
+                  className="w-full bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 py-4 rounded-2xl font-bold transition-all border border-zinc-800 text-sm"
                 >
-                  העתק קישור לשאלון
+                  העתק קישור להפצה
                 </button>
              </div>
           </div>
         ))}
 
         {sessions.length === 0 && (
-          <div className="col-span-full py-24 text-center glass rounded-[3rem] border-dashed border-2 border-zinc-800">
-            <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center mx-auto mb-6 text-zinc-700">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+          <div className="col-span-full py-32 text-center glass rounded-[4rem] border-dashed border-2 border-zinc-800 group hover:border-indigo-500/30 transition-colors">
+            <div className="w-20 h-20 bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto mb-8 text-zinc-700 group-hover:scale-110 transition-transform">
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
             </div>
-            <p className="text-zinc-500 font-bold text-lg">אין ממשקים פעילים.</p>
-            <p className="text-zinc-600 text-sm mt-2">לחץ על "ממשק חדש" למעלה כדי להתחיל.</p>
+            <p className="text-zinc-500 font-black text-2xl">טרם הוקמו שותפויות</p>
+            <p className="text-zinc-600 font-bold mt-2">לחץ על "+ ממשק חדש" בתפריט העליון כדי להתחיל.</p>
           </div>
         )}
       </div>
