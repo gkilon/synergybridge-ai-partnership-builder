@@ -74,7 +74,8 @@ export const dbService = {
     return !!db;
   },
 
-  async loginAsAdmin(): Promise<User | null> {
+  // Renamed from loginAsAdmin to loginWithGoogle to match components/AdminDashboard.tsx usage
+  async loginWithGoogle(): Promise<User | null> {
     if (!auth) {
       console.log("No cloud config found. Login is disabled.");
       return null;
@@ -98,12 +99,13 @@ export const dbService = {
     if (auth) await signOut(auth);
   },
 
+  // Fixed to return the unsubscribe function to avoid "not callable" error in AdminDashboard
   onAuthChange(callback: (user: User | null) => void) {
     if (!auth) {
       callback(null);
-      return;
+      return () => {};
     }
-    onAuthStateChanged(auth, callback);
+    return onAuthStateChanged(auth, callback);
   },
 
   async getSessions(): Promise<PartnershipSession[]> {

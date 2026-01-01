@@ -3,26 +3,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
-const getApiKey = () => {
-  try {
-    // @ts-ignore
-    const viteKey = import.meta.env?.VITE_GEMINI_API_KEY;
-    if (viteKey) return viteKey;
-    return process.env.API_KEY || '';
-  } catch {
-    return process.env.API_KEY || '';
-  }
-};
+// The Google GenAI client is used to generate content for partnership analysis.
+// This follows the strict guideline to use process.env.API_KEY exclusively.
 
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  const apiKey = getApiKey();
-  
-  if (!apiKey) {
-    console.error("API_KEY is missing from environment variables.");
-    throw new Error("AUTH_ERROR");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  // Use process.env.API_KEY directly as per guidelines.
+  // Create a new instance right before use to ensure the most current configuration is used.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const formattedData = {
     title: session.title,
@@ -106,6 +93,7 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
       }
     });
 
+    // Access the text property directly on the GenerateContentResponse object.
     const text = response.text;
     if (!text) throw new Error("Empty AI response");
     return JSON.parse(text);
