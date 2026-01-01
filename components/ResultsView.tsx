@@ -18,6 +18,7 @@ const SIDE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
 const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   const [loading, setLoading] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   if (!session) return null;
 
@@ -26,6 +27,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     try {
       const result = await analyzePartnership(session);
       onUpdate({ ...session, analysis: result });
+      setShowAIModal(true); // Pop up the modal when analysis is done
     } catch (e: any) {
       alert(e.message || "חלה שגיאה בחיבור למערכת הניתוח");
     } finally {
@@ -87,7 +89,97 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   }, [averageScore]);
 
   return (
-    <div className="space-y-10 animate-fadeIn pb-32 max-w-7xl mx-auto px-4 text-right" dir="rtl">
+    <div className="space-y-10 animate-fadeIn pb-32 max-w-7xl mx-auto px-4 text-right relative" dir="rtl">
+      
+      {/* AI STRATEGIC MODAL (The Popup) */}
+      {showAIModal && session.analysis && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 animate-fadeIn">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setShowAIModal(false)}></div>
+          <div className="glass max-w-5xl w-full max-h-[90vh] rounded-[4rem] border-indigo-500/30 shadow-[0_0_100px_rgba(99,102,241,0.2)] relative z-10 flex flex-col overflow-hidden animate-slideDown">
+            
+            {/* Modal Header */}
+            <div className="p-10 border-b border-zinc-800 flex justify-between items-center bg-indigo-500/5">
+               <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-black text-white">המוח האסטרטגי: מסקנות ויישום</h3>
+                    <p className="text-indigo-400 text-xs font-black uppercase tracking-widest mt-1">AI Intelligence Briefing</p>
+                  </div>
+               </div>
+               <button onClick={() => setShowAIModal(false)} className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-500 hover:text-white transition-colors border border-zinc-800">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+               </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-grow overflow-y-auto p-10 space-y-12 custom-scrollbar">
+               {/* Summary Quote */}
+               <div className="relative p-10 bg-indigo-500/5 rounded-[3rem] border border-indigo-500/10">
+                  <div className="absolute -top-6 right-10 px-4 py-2 bg-indigo-600 rounded-xl text-[10px] font-black text-white uppercase tracking-[0.2em]">תובנת העל</div>
+                  <p className="text-2xl md:text-3xl font-black text-white leading-tight tracking-tight">
+                    {session.analysis.summary}
+                  </p>
+               </div>
+
+               {/* RoadMap Sections */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-6">
+                     <h4 className="text-xl font-black text-indigo-400 border-r-4 border-indigo-400 pr-4">צעדים אופרטיביים: תשתית ומערכת</h4>
+                     <div className="space-y-4">
+                        {session.analysis.recommendations.systemic.map((rec, i) => (
+                          <div key={i} className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 flex items-start gap-4">
+                             <span className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-xs font-black flex-shrink-0 border border-indigo-500/10">{i+1}</span>
+                             <p className="text-lg font-bold text-zinc-200">{rec}</p>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
+                  <div className="space-y-6">
+                     <h4 className="text-xl font-black text-purple-400 border-r-4 border-purple-400 pr-4">צעדים אופרטיביים: יחסים ותרבות</h4>
+                     <div className="space-y-4">
+                        {session.analysis.recommendations.relational.map((rec, i) => (
+                          <div key={i} className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 flex items-start gap-4">
+                             <span className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center text-xs font-black flex-shrink-0 border border-purple-500/10">{i+1}</span>
+                             <p className="text-lg font-bold text-zinc-200">{rec}</p>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+
+               {/* Strengths / Risks Quick View */}
+               <div className="grid grid-cols-2 gap-6 border-t border-zinc-800 pt-10">
+                  <div className="space-y-4">
+                     <h5 className="text-xs font-black text-emerald-500 uppercase tracking-widest">חוזקות לשימור</h5>
+                     <div className="flex flex-wrap gap-2">
+                        {[...session.analysis.strengths.systemic, ...session.analysis.strengths.relational].map((s, i) => (
+                          <span key={i} className="px-4 py-2 bg-emerald-500/10 rounded-xl text-xs font-bold text-emerald-400 border border-emerald-500/10">{s}</span>
+                        ))}
+                     </div>
+                  </div>
+                  <div className="space-y-4">
+                     <h5 className="text-xs font-black text-rose-500 uppercase tracking-widest">סיכונים לטיפול</h5>
+                     <div className="flex flex-wrap gap-2">
+                        {[...session.analysis.weaknesses.systemic, ...session.analysis.weaknesses.relational].map((w, i) => (
+                          <span key={i} className="px-4 py-2 bg-rose-500/10 rounded-xl text-xs font-bold text-rose-400 border border-rose-500/10">{w}</span>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-8 bg-zinc-950/50 border-t border-zinc-800 flex justify-center">
+               <button onClick={() => setShowAIModal(false)} className="bg-white text-black px-12 py-4 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">
+                  הבנתי, בואו ניישם
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER SECTION */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 border-b border-zinc-800 pb-10">
         <div className="flex gap-6 items-center">
@@ -102,19 +194,28 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         </div>
         <div className="flex gap-4">
            <button onClick={onBack} className="bg-zinc-900 text-zinc-400 px-8 py-4 rounded-2xl font-bold hover:text-white transition-all border border-zinc-800">חזרה</button>
-           <button 
-             disabled={loading || session.responses.length < 1}
-             onClick={handleAnalyze}
-             className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white px-12 py-4 rounded-2xl font-black transition-all shadow-3xl shadow-indigo-600/30 flex items-center gap-4 text-lg"
-           >
-             {loading ? <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : '✨ הפעל סוכן אסטרטגי AI'}
-           </button>
+           {session.analysis ? (
+             <button 
+               onClick={() => setShowAIModal(true)}
+               className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 rounded-2xl font-black transition-all shadow-xl flex items-center gap-3 text-lg border border-indigo-400/30 animate-pulse"
+             >
+               ✨ צפה בתובנות AI
+             </button>
+           ) : (
+             <button 
+               disabled={loading || session.responses.length < 1}
+               onClick={handleAnalyze}
+               className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white px-12 py-4 rounded-2xl font-black transition-all shadow-3xl shadow-indigo-600/30 flex items-center gap-4 text-lg"
+             >
+               {loading ? <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : '✨ הפעל סוכן אסטרטגי AI'}
+             </button>
+           )}
         </div>
       </div>
 
       {/* DASHBOARD: Radar + Bar Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-         {/* LEFT: Perception Spider Chart */}
+         {/* Perception Spider Chart */}
          <div className="lg:col-span-7 glass rounded-[4rem] p-12 border-white/5 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
             <h3 className="text-2xl font-black text-white mb-2 relative z-10">מיפוי פערים תפיסתיים</h3>
@@ -146,7 +247,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
             </div>
          </div>
 
-         {/* RIGHT: Ranking Histogram */}
+         {/* Ranking Histogram */}
          <div className="lg:col-span-5 glass rounded-[4rem] p-12 border-white/5 shadow-2xl relative overflow-hidden group">
             <h3 className="text-2xl font-black text-white mb-2">דירוג ביצועי הממשק</h3>
             <p className="text-zinc-500 text-sm font-bold mb-10">ממוצעים מסודרים מהגבוה לנמוך (Scale 1-7)</p>
@@ -167,107 +268,14 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
             </div>
          </div>
       </div>
+      
+      {/* Background Brain Icon for UI Polish */}
+      <div className="fixed bottom-10 left-10 opacity-5 pointer-events-none">
+         <svg className="w-64 h-64 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+      </div>
 
-      {/* AI STRATEGIC CONCLUSION - THE "BRAIN" */}
-      {session.analysis && (
-        <div className="space-y-10 animate-slideUp pt-10 border-t border-zinc-800">
-           <div className="flex items-center gap-6">
-              <h3 className="text-4xl font-black text-white tracking-tighter">המסקנות של המוח האסטרטגי (AI)</h3>
-              <div className="h-px bg-zinc-800 flex-grow"></div>
-           </div>
-
-           {/* Summary Quote Box */}
-           <div className="glass rounded-[4rem] p-16 border-indigo-500/20 bg-indigo-500/5 relative overflow-hidden shadow-4xl group">
-              <div className="absolute -top-10 -right-10 text-zinc-900 font-black text-[200px] leading-none opacity-20 pointer-events-none">"</div>
-              <h4 className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.5em] mb-8 relative z-10">תובנת העל והפרשנות המערכתית</h4>
-              <p className="text-3xl md:text-4xl font-black text-white leading-tight tracking-tight relative z-10 max-w-5xl">
-                {session.analysis.summary}
-              </p>
-           </div>
-
-           {/* Strengths / Weaknesses Details */}
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="glass p-12 rounded-[3rem] border-emerald-500/10 bg-emerald-500/5">
-                 <h4 className="text-xl font-black text-emerald-400 mb-8 flex items-center gap-4">
-                    <span className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center">✦</span>
-                    עמודי התווך של הממשק
-                 </h4>
-                 <div className="space-y-8">
-                    <div>
-                       <h5 className="text-[10px] font-black text-emerald-600/60 uppercase mb-4 tracking-widest">ברמה המערכתית</h5>
-                       <div className="space-y-3">
-                          {session.analysis.strengths.systemic.map((s, i) => (
-                            <p key={i} className="text-sm font-bold text-zinc-200 bg-black/20 p-4 rounded-2xl border border-emerald-500/10">{s}</p>
-                          ))}
-                       </div>
-                    </div>
-                    <div>
-                       <h5 className="text-[10px] font-black text-emerald-600/60 uppercase mb-4 tracking-widest">בציר היחסים</h5>
-                       <div className="space-y-3">
-                          {session.analysis.strengths.relational.map((s, i) => (
-                            <p key={i} className="text-sm font-bold text-zinc-200 bg-black/20 p-4 rounded-2xl border border-emerald-500/10">{s}</p>
-                          ))}
-                       </div>
-                    </div>
-                 </div>
-              </div>
-
-              <div className="glass p-12 rounded-[3rem] border-rose-500/10 bg-rose-500/5">
-                 <h4 className="text-xl font-black text-rose-400 mb-8 flex items-center gap-4">
-                    <span className="w-10 h-10 rounded-2xl bg-rose-500/20 flex items-center justify-center">◇</span>
-                    חסמים וסיכונים קריטיים
-                 </h4>
-                 <div className="space-y-8">
-                    <div>
-                       <h5 className="text-[10px] font-black text-rose-600/60 uppercase mb-4 tracking-widest">חסמי תשתית</h5>
-                       <div className="space-y-3">
-                          {session.analysis.weaknesses.systemic.map((w, i) => (
-                            <p key={i} className="text-sm font-bold text-zinc-300 bg-black/20 p-4 rounded-2xl border border-rose-500/10">{w}</p>
-                          ))}
-                       </div>
-                    </div>
-                    <div>
-                       <h5 className="text-[10px] font-black text-rose-600/60 uppercase mb-4 tracking-widest">חסמי תרבות</h5>
-                       <div className="space-y-3">
-                          {session.analysis.weaknesses.relational.map((w, i) => (
-                            <p key={i} className="text-sm font-bold text-zinc-300 bg-black/20 p-4 rounded-2xl border border-rose-500/10">{w}</p>
-                          ))}
-                       </div>
-                    </div>
-                 </div>
-              </div>
-           </div>
-
-           {/* IMPLEMENTATION ROADMAP */}
-           <div className="space-y-8 pt-6">
-              <h4 className="text-3xl font-black text-white">תוכנית יישום אופרטיבית</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 {/* Systemic Recs */}
-                 <div className="space-y-5">
-                    <h5 className="text-sm font-black text-indigo-400 pr-4 border-r-2 border-indigo-500">מהלכים מערכתיים מיידיים</h5>
-                    {session.analysis.recommendations.systemic.map((rec, i) => (
-                       <div key={i} className="bg-zinc-900/60 p-8 rounded-[2rem] border border-zinc-800 flex items-start gap-6 group hover:border-indigo-500/40 transition-all shadow-xl">
-                          <span className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-sm font-black flex-shrink-0 border border-indigo-500/10">{i+1}</span>
-                          <p className="text-lg font-bold text-zinc-100 leading-snug">{rec}</p>
-                       </div>
-                    ))}
-                 </div>
-                 {/* Relational Recs */}
-                 <div className="space-y-5">
-                    <h5 className="text-sm font-black text-purple-400 pr-4 border-r-2 border-purple-500">שיקום וטיפוח ציר היחסים</h5>
-                    {session.analysis.recommendations.relational.map((rec, i) => (
-                       <div key={i} className="bg-zinc-900/60 p-8 rounded-[2rem] border border-zinc-800 flex items-start gap-6 group hover:border-purple-500/40 transition-all shadow-xl">
-                          <span className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center text-sm font-black flex-shrink-0 border border-purple-500/10">{i+1}</span>
-                          <p className="text-lg font-bold text-zinc-100 leading-snug">{rec}</p>
-                       </div>
-                    ))}
-                 </div>
-              </div>
-           </div>
-        </div>
-      )}
     </div>
   );
-};
+}; 
 
 export default ResultsView;
