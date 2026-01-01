@@ -9,7 +9,7 @@ import { ANALYSIS_PROMPT_TEMPLATE, PARTNERSHIP_METHODOLOGY } from "../constants"
 const getApiKey = () => {
   try {
     // Attempt to use the user's specific Vite environment variable first
-    // as requested in the screenshot to fix their access issue.
+    // as requested to fix their specific environment access issue.
     // @ts-ignore
     return import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || '';
   } catch {
@@ -19,7 +19,7 @@ const getApiKey = () => {
 
 /**
  * Analyzes the partnership data using the Gemini AI model.
- * Strictly follows the @google/genai coding guidelines.
+ * Behaves as a world-class organizational consultant.
  */
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
   const apiKey = getApiKey();
@@ -45,6 +45,7 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
   };
 
   const prompt = `
+    תפקיד: יועץ ארגוני בכיר ומומחה בינלאומי בבניית ממשקים ושותפויות.
     מתודולוגיית עבודה (KNOWLEDGE BASE):
     ${PARTNERSHIP_METHODOLOGY}
 
@@ -55,10 +56,11 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
     נתוני הממשק והקשר ארגוני לניתוח:
     ${JSON.stringify(formattedData, null, 2)}
 
-    שים לב במיוחד: 
-    - השתמש בשאלות 23 (אפקטיביות) ו-24 (שביעות רצון) כמשתני מטרה (Outcome).
-    - זהה איזה מבין 6 האשכולות (אג'נדה, תפקידים, החלטות, תהליכים, כבוד, תקשורת) הוא המשפיע החזק ביותר על התוצאות (The Key Driver).
-    - ציין במפורש בסיכום מהו ה-Key Driver שזיהית.
+    הנחיות קריטיות לניתוח מעמיק: 
+    1. ניתוח דמוי רגרסיה: השתמש בשאלות 23-24 (אפקטיביות ושביעות רצון) כציר הייחוס. זהה איזה מבין 6 האשכולות (אג'נדה, תפקידים, החלטות, תהליכים, כבוד, תקשורת) הוא ה-Influencer המובהק ביותר על הצלחת הממשק הזה.
+    2. "היישות השלישית": אל תסתפק בניתוח צד א' וצד ב'. נתח את הדינמיקה שנוצרת ביניהם כמרחב נפרד.
+    3. עומק אסטרטגי: ספק תובנות שנוגעות למבנה הכוח, פערים בתפיסת התפקיד והשפעת היחסים על השגת המשימה.
+    4. זיהוי ה-Key Driver: בסיכום המנהלים, ציין במפורש מהו "המפתח" (הגורם היחיד שאם נזיז אותו, כל השאר ישתפר).
   `;
 
   try {
@@ -90,14 +92,13 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
               type: Type.ARRAY,
               items: { type: Type.STRING }
             },
-            summary: { type: Type.STRING }
+            summary: { type: Type.STRING, description: "ניתוח אסטרטגי עמוק ומקיף הכולל זיהוי ה-Key Driver." }
           },
           required: ['strengths', 'weaknesses', 'operationalRecommendations', 'summary']
         }
       }
     });
 
-    // Directly access .text property from GenerateContentResponse
     const text = response.text;
     if (!text) throw new Error("Empty AI response");
     
