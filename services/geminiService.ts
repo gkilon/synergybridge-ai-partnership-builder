@@ -3,27 +3,17 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
-/**
- * Helper to get API key from environment, supporting both Vite and process.env
- */
 const getApiKey = () => {
   try {
-    // Check for Vite-specific environment variable first as requested by user
     // @ts-ignore
     const viteKey = import.meta.env?.VITE_GEMINI_API_KEY;
     if (viteKey) return viteKey;
-    
-    // Fallback to process.env.API_KEY
     return process.env.API_KEY || '';
   } catch {
     return process.env.API_KEY || '';
   }
 };
 
-/**
- * Analyzes the partnership data using the Gemini AI model.
- * Behaves as a world-class organizational consultant.
- */
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
   const apiKey = getApiKey();
   
@@ -32,15 +22,15 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
     throw new Error("AUTH_ERROR");
   }
 
-  // Always create a new instance inside the function call
   const ai = new GoogleGenAI({ apiKey });
   
   const formattedData = {
     title: session.title,
     context: session.context || "לא הוגדר הקשר ספציפי",
-    sidesDefined: session.sides,
+    sides: session.sides,
+    totalResponses: session.responses.length,
     responses: session.responses.map(r => ({
-      sideRepresented: r.side,
+      side: r.side,
       role: r.role,
       scores: r.scores,
       comments: r.comments
@@ -48,31 +38,31 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
   };
 
   const prompt = `
-    תפקיד: יועץ ארגוני בכיר ומומחה בינלאומי בבניית ממשקים ושותפויות.
-    מתודולוגיית עבודה (KNOWLEDGE BASE):
+    תפקיד: סוכן בינה מלאכותית בכיר המשמש כ"מוח" של הממשק הארגוני.
+    מטרה: להפיק תובנות אסטרטגיות עמוקות ותוכנית יישום אופרטיבית מבוססת נתונים.
+    
+    מתודולוגיה:
     ${PARTNERSHIP_METHODOLOGY}
 
-    ---
-    
-    נתוני הממשק והקשר ארגוני לניתוח:
+    נתונים לניתוח:
     ${JSON.stringify(formattedData, null, 2)}
 
-    הנחיות קריטיות לניתוח אסטרטגי (מעבר לנתונים היבשים): 
-    1. אל תחזור על ממוצעים: המשתמש כבר רואה את הגרפים. הניתוח שלך צריך לתת פרשנות - למה הפערים קיימים? מהי הדינמיקה הסמויה?
-    2. זיהוי ה-Key Driver: זהה את הפרמטר האחד (בין אם זה "אמון" או "תהליכים") שמהווה את צוואר הבקבוק המרכזי בממשק.
-    3. היישות השלישית: נתח את השותפות כמעבדה. האם היא "קונפליקטואלית", "מנוכרת", "תפעולית יעילה" או "אסטרטגית"?
-    4. חלוקה קטגורית: חלק את ההמלצות ל"צד מערכתי" (תהליכים, מבנה) ול"ציר היחסים" (אמון, תקשורת).
-    5. שפה: שפה של דוח אסטרטגי בכיר. תמציתית, חדה ונועזת.
+    הנחיות לניתוח (תהיה חד, ביקורתי ומכוון תוצאות):
+    1. אל תחזור על הממוצעים שהמשתמש כבר רואה בגרפים. תן פרשנות ל"למה" - למה יש פערים? מה הדינמיקה הסמויה?
+    2. זהה את ה-Key Driver: מהו המשתנה האחד שאם נטפל בו, השותפות תזנק קדימה?
+    3. תן המלצות קונקרטיות לשלבי יישום (טווח קצר וטווח ארוך).
+    4. השתמש בשפה של יועץ אסטרטגי בכיר - מקצועית, נועזת ומניעה לפעולה.
+    5. חלק את ההמלצות ל"צד מערכתי" (מנגנונים) ול"ציר היחסים" (אמון ותרבות).
 
-    דרישות הפלט (JSON בלבד):
+    פלט נדרש (JSON בלבד):
     {
-      "strengths": { "systemic": ["חוזקה מערכתית עמוקה"], "relational": ["חוזקה ביחסים"] },
-      "weaknesses": { "systemic": ["חולשה מערכתית"], "relational": ["חולשה ביחסים"] },
+      "strengths": { "systemic": ["..."], "relational": ["..."] },
+      "weaknesses": { "systemic": ["..."], "relational": ["..."] },
       "recommendations": {
-         "systemic": ["3 המלצות אופרטיביות למבנה/תהליך"],
-         "relational": ["3 המלצות אופרטיביות לאמון/תקשורת"]
+         "systemic": ["המלצה אופרטיבית למנגנון"],
+         "relational": ["המלצה אופרטיבית ליחסים"]
       },
-      "summary": "תובנת על אסטרטגית (ה-Deep Insight) - מה באמת קורה כאן ואיך זה משפיע על הארגון."
+      "summary": "סיכום אסטרטגי המהווה את ה'שכל' מאחורי הנתונים, כולל הנחיה ברורה לשלבי היישום הבאים."
     }
   `;
 
@@ -118,13 +108,9 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
 
     const text = response.text;
     if (!text) throw new Error("Empty AI response");
-    
     return JSON.parse(text);
   } catch (error: any) {
     console.error("AI Analysis failed:", error);
-    if (error?.message?.includes("entity was not found") || error?.status === 404 || error?.status === 401) {
-      throw new Error("AUTH_ERROR");
-    }
-    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע. וודא שהגדרת מפתח API תקין.");
+    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע.");
   }
 };
