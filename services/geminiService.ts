@@ -3,53 +3,38 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 import { PARTNERSHIP_METHODOLOGY } from "../constants";
 
-// The Google GenAI client is used to generate content for partnership analysis.
-// This follows the strict guideline to use process.env.API_KEY exclusively.
-
 export const analyzePartnership = async (session: PartnershipSession): Promise<AIAnalysis> => {
-  // Use process.env.API_KEY directly as per guidelines.
-  // Create a new instance right before use to ensure the most current configuration is used.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const formattedData = {
     title: session.title,
-    context: session.context || "לא הוגדר הקשר ספציפי",
     sides: session.sides,
-    totalResponses: session.responses.length,
     responses: session.responses.map(r => ({
       side: r.side,
-      role: r.role,
-      scores: r.scores,
+      scores: r.scores, // q23-q24 are the target variables
       comments: r.comments
     }))
   };
 
   const prompt = `
-    תפקיד: סוכן בינה מלאכותית בכיר (Strategic Implementation Agent).
-    אתה ה"מוח" המנתח של הממשק הארגוני הזה. תפקידך להסיק מסקנות אופרטיביות חדות, לזהות פערים סמויים ולכוון לשלבי יישום מעשיים.
+    משימה: בצע "ניתוח השפעה אסטרטגי" (Key Driver Analysis) לממשק הארגוני.
     
-    מתודולוגיה:
-    ${PARTNERSHIP_METHODOLOGY}
+    מתודולוגיה: ${PARTNERSHIP_METHODOLOGY}
+    
+    נתונים: ${JSON.stringify(formattedData)}
 
-    נתונים לניתוח:
-    ${JSON.stringify(formattedData, null, 2)}
+    שלבי הניתוח הנדרשים:
+    1. Key Driver: זהה איזו קטגוריה (אג'נדה/תפקידים/החלטות/תהליכים/כבוד/תקשורת) היא בעלת המתאם הגבוה ביותר לשביעות הרצון (q23, q24). מה "מפיל" או "מרים" את הממשק הזה?
+    2. Side Gap Detection: האם יש פער תפיסתי מהותי בין הצדדים? (למשל צד א' מרגיש שהאג'נדה ברורה וצד ב' מרגיש אבוד).
+    3. יישות שלישית: הגדר את מצב "בריאות" השותפות כיישות עצמאית.
+    4. המלצות: ספק 3 המלצות מערכתיות ו-3 המלצות יחסים, מדורגות לפי אימפקט על שביעות הרצון.
 
-    הנחיות לניתוח (תהיה השכל שמאחורי המספרים):
-    1. תובנות עומק: אל תחזור על הממוצעים. תסביר את המשמעות האסטרטגית שלהם.
-    2. זיהוי ה-Key Driver: מהי הנקודה האחת שתשנה את הכל?
-    3. שלבי יישום (Roadmap): חלק את ההמלצות למהלכים מיידיים (Quick Wins) ולבניית תשתית ארוכת טווח.
-    4. יישות שלישית: נתח את הדינמיקה בין הצדדים כיישות אחת שזקוקה לריפוי או שכלול.
-    5. טון: סמכותי, חכם, מניע לפעולה.
-
-    פלט נדרש (JSON בלבד):
+    החזר JSON במבנה הבא:
     {
-      "strengths": { "systemic": ["..."], "relational": ["..."] },
-      "weaknesses": { "systemic": ["..."], "relational": ["..."] },
-      "recommendations": {
-         "systemic": ["המלצה למנגנון עבודה חדש/משופר"],
-         "relational": ["המלצה לשיפור התקשורת או האמון"]
-      },
-      "summary": "סיכום אסטרטגי דחוס וחד - 'השכל המנתח'. עליך להציג כאן את המסקנה המרכזית ואת מפת הדרכים ליישום."
+      "strengths": { "systemic": [], "relational": [] },
+      "weaknesses": { "systemic": [], "relational": [] },
+      "recommendations": { "systemic": [], "relational": [] },
+      "summary": "פתח ב'תובנת המפתח' (The Game Changer) - מהו המשתנה שהכי משפיע כאן על שביעות הרצון. המשך בניתוח הפערים בין הצדדים וסיים במפת הדרכים."
     }
   `;
 
@@ -57,48 +42,11 @@ export const analyzePartnership = async (session: PartnershipSession): Promise<A
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            strengths: {
-              type: Type.OBJECT,
-              properties: {
-                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
-                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ['systemic', 'relational']
-            },
-            weaknesses: {
-              type: Type.OBJECT,
-              properties: {
-                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
-                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ['systemic', 'relational']
-            },
-            recommendations: {
-              type: Type.OBJECT,
-              properties: {
-                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
-                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ['systemic', 'relational']
-            },
-            summary: { type: Type.STRING }
-          },
-          required: ['strengths', 'weaknesses', 'recommendations', 'summary']
-        }
-      }
+      config: { responseMimeType: "application/json" }
     });
-
-    // Access the text property directly on the GenerateContentResponse object.
-    const text = response.text;
-    if (!text) throw new Error("Empty AI response");
-    return JSON.parse(text);
-  } catch (error: any) {
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
     console.error("AI Analysis failed:", error);
-    throw new Error("מערכת ה-AI לא הצליחה לגבש המלצות כרגע.");
+    throw new Error("המערכת נכשלה בניתוח הנתונים.");
   }
 };

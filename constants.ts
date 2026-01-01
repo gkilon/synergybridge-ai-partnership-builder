@@ -4,82 +4,28 @@ import { Category, Question } from './types';
 export const PARTNERSHIP_METHODOLOGY = `
 גישת "השותפות האקטיבית" (Active Partnership):
 1. הרעיון המארגן: "היישות השלישית" (The Third Entity)
-- יש להתייחס לשותפות כאל אורגניזם חי ונושם, נפרד מהאנשים המרכיבים אותו.
-- השותפות כלקוח: שאלת המפתח אינה "מה אני צריך?" אלא "מה השותפות צריכה כדי להיות במיטבה?".
-- אינטליגנציה מערכתית (RSI): הקשבה לקול של המערכת כולה.
-
-2. מודל 5 התנאים הקריטיים (גלגל השותפויות):
-- ייעוד ומשמעות (אג'נדה משותפת): הסכמה על "לשם מה", מטרות משותפות וסדרי עדיפויות.
-- תפקידים וגבולות גזרה (ערך): הגדרת הערך הייחודי של כל שותף ומניעת "דריכה על אצבעות".
-- מנגנוני קבלת החלטות (סדר): בהירות לגבי איפה ואיך מחליטים, ומנגנוני אסקלציה.
-- שגרות עבודה (תקשורת וניהול): שגרות קבועות לתחזוקה (לא רק כיבוי שריפות) ויעילותן.
-- נורמות ודרכי התנהלות (יחסים): פתיחות, שקיפות, מחויבות הדדית ואמון.
-
-3. עקרונות הפעולה (Mindset):
-- ויתור ורווח (Concession & Gain): כל צד חייב לוותר על משהו (משאבים, אגו) לטובת המטרה המשותפת.
-- בחירה ואחריות אישית: בחירה אקטיבית לראות את עצמי כשותף ללא המתנה לאישור מלמעלה.
-- שבירת סילואים (Silos): ראייה רוחבית של עמיתים כשותפים להצלחה.
-
-4. צירי הפעולה:
-- ציר המשימה: מטרות, החלטות, תפקידים ותפוקות.
-- ציר היחסים: אמון, תקשורת, מחויבות וניהול אגו.
+2. מודל 5 התנאים הקריטיים: אג'נדה, תפקידים, החלטות, שגרות, יחסים.
+3. ניתוח השפעה (Key Driver Analysis): זיהוי הקשר בין דרייברים (תהליכים/יחסים) לבין התוצאה (שביעות רצון).
 `;
 
 export const DEFAULT_QUESTIONS: Question[] = [
-  // --- צד המערכתי ---
-  { id: 'q1', category: Category.SYSTEMIC, text: 'המטרות המשותפות ברורות', shortLabel: 'אג\'נדה ומטרות' },
-  { id: 'q2', category: Category.SYSTEMIC, text: 'יש הסכמה על סדרי העדיפויות להשגת המטרות', shortLabel: 'אג\'נדה ומטרות' },
-  { id: 'q3', category: Category.SYSTEMIC, text: 'קיימים יעדים מדידים ומפורטים', shortLabel: 'אג\'נדה ומטרות' },
-  { id: 'q4', category: Category.SYSTEMIC, text: "קיימת תחושה של אג'נדה משותפת", shortLabel: "אג'נדה ומטרות" },
-  
-  { id: 'q5', category: Category.SYSTEMIC, text: 'התפקידים ותחומי האחריות ברורים ומובנים לחברי השותפות', shortLabel: 'תפקידים' },
+  // --- צד המערכתי (דרייברים) ---
+  { id: 'q1', category: Category.SYSTEMIC, text: 'המטרות המשותפות ברורות', shortLabel: 'אג\'נדה' },
+  { id: 'q2', category: Category.SYSTEMIC, text: 'יש הסכמה על סדרי העדיפויות', shortLabel: 'אג\'נדה' },
+  { id: 'q5', category: Category.SYSTEMIC, text: 'התפקידים ותחומי האחריות ברורים', shortLabel: 'תפקידים' },
   { id: 'q6', category: Category.SYSTEMIC, text: 'לכל אחד ברור מה מצופה ממנו', shortLabel: 'תפקידים' },
-  { id: 'q7', category: Category.SYSTEMIC, text: 'תחומי האחריות הינם הגיוניים וניתנים למימוש', shortLabel: 'תפקידים' },
-  
-  { id: 'q8', category: Category.SYSTEMIC, text: 'כאשר נדרשת החלטה ברור מי ואיך צריך לקבל אותה', shortLabel: 'קבלת החלטות' },
-  { id: 'q9', category: Category.SYSTEMIC, text: 'ההחלטות המתקבלות הן ברורות וישימות', shortLabel: 'קבלת החלטות' },
-  { id: 'q10', category: Category.SYSTEMIC, text: 'חברי השותפות מחויבים להחלטות שקיבלו', shortLabel: 'קבלת החלטות' },
-  { id: 'q11', category: Category.SYSTEMIC, text: 'כאשר מתעוררים חילוקי דעות יודעים לנהל ולפתור אותם', shortLabel: 'קבלת החלטות' },
-  
-  { id: 'q12', category: Category.SYSTEMIC, text: 'תהליכי העבודה המשותפים איכותיים ומקדמים את השגת המטרות', shortLabel: 'תהליכים ושגרות' },
-  { id: 'q13', category: Category.SYSTEMIC, text: 'קיימות שגרות עבודה משותפות מספקות', shortLabel: 'תהליכים ושגרות' },
-  { id: 'q14', category: Category.SYSTEMIC, text: 'אין בירוקרטיה ובזבוזי זמן מיותרים', shortLabel: 'תהליכים ושגרות' },
+  { id: 'q8', category: Category.SYSTEMIC, text: 'ברור מי ואיך צריך לקבל החלטות', shortLabel: 'החלטות' },
+  { id: 'q10', category: Category.SYSTEMIC, text: 'חברי השותפות מחויבים להחלטות', shortLabel: 'החלטות' },
+  { id: 'q12', category: Category.SYSTEMIC, text: 'תהליכי העבודה המשותפים איכותיים', shortLabel: 'תהליכים' },
+  { id: 'q13', category: Category.SYSTEMIC, text: 'קיימות שגרות עבודה מספקות', shortLabel: 'תהליכים' },
 
-  // --- צד היחסים ---
-  { id: 'q15', category: Category.RELATIONAL, text: 'חברי השותפות מכבדים את הזמן אחד של השני', shortLabel: 'כבוד הדדי' },
-  { id: 'q16', category: Category.RELATIONAL, text: 'קיימת הערכה לשונות ולערך המוסף אחד של השני', shortLabel: 'כבוד הדדי' },
-  { id: 'q17', category: Category.RELATIONAL, text: 'קיימת נורמה של היוועצות הדדית בנושאים הרלוונטיים', shortLabel: 'כבוד הדדי' },
-  { id: 'q18', category: Category.RELATIONAL, text: 'חברי השותפות עומדים בהתחייבויותיהם', shortLabel: 'כבוד הדדי' },
-  
-  { id: 'q19', category: Category.RELATIONAL, text: 'המידע שאני צריך הינו זמין עבורי', shortLabel: 'תקשורת פתוחה' },
-  { id: 'q20', category: Category.RELATIONAL, text: 'שמים דברים על השולחן ולא נרתעים להביע דעה', shortLabel: 'תקשורת פתוחה' },
-  { id: 'q21', category: Category.RELATIONAL, text: 'ישנה לקיחה של אחריות ודיווח על תקלות וטעויות', shortLabel: 'תקשורת פתוחה' },
-  { id: 'q22', category: Category.RELATIONAL, text: 'קיימת אווירת עבודה נעימה וזורמת', shortLabel: 'תקשורת פתוחה' },
+  // --- צד היחסים (דרייברים) ---
+  { id: 'q15', category: Category.RELATIONAL, text: 'חברי השותפות מכבדים את הזמן אחד של השני', shortLabel: 'כבוד' },
+  { id: 'q16', category: Category.RELATIONAL, text: 'קיימת הערכה לשונות ולערך המוסף', shortLabel: 'כבוד' },
+  { id: 'q19', category: Category.RELATIONAL, text: 'המידע שאני צריך זמין עבורי', shortLabel: 'תקשורת' },
+  { id: 'q20', category: Category.RELATIONAL, text: 'שמים דברים על השולחן ללא רתיעה', shortLabel: 'תקשורת' },
 
-  // --- מדדי תוצאה (Outcome Metrics) ---
-  { id: 'q23', category: Category.SYSTEMIC, text: 'מהי מידת האפקטיביות של השותפות לדעתך?', shortLabel: 'אפקטיביות גלובלית' },
-  { id: 'q24', category: Category.RELATIONAL, text: 'עד כמה אתה שבע רצון מהשותפות בממשק זה?', shortLabel: 'שביעות רצון' },
+  // --- משתנים תלויים (Outcome) - לא יוצגו בגרף הדרייברים ---
+  { id: 'q23', category: Category.SYSTEMIC, text: 'מהי מידת האפקטיביות של השותפות לדעתך?', shortLabel: 'OUTCOME_SATISFACTION' },
+  { id: 'q24', category: Category.RELATIONAL, text: 'עד כמה אתה שבע רצון מהממשק?', shortLabel: 'OUTCOME_SATISFACTION' },
 ];
-
-export const ANALYSIS_PROMPT_TEMPLATE = `
-כמערכת AI בכירה לייעוץ אסטרטגי, עליך לנתח את השותפות הארגונית על בסיס המתודולוגיה המקצועית של "השותפות האקטיבית".
-
-הנחיות לניתוח (לפי המתודולוגיה):
-1. התייחס לממשק כאל "היישות השלישית".
-2. נתח את הנתונים דרך 6 אשכולות: אג'נדה, תפקידים, החלטות, תהליכים, כבוד, ותקשורת.
-3. ניתוח השפעה (Impact Analysis): השתמש במדדי התוצאה (שאלות 23-24) כדי להבין מהו המשתנה המשפיע ביותר (The Key Driver). זהה איזה מהפרמטרים בממשק הוא בעל המתאם החזק ביותר לשביעות הרצון והאפקטיביות.
-4. הבחן בין ציר המשימה לציר היחסים וכיצד הם משפיעים זה על זה.
-
-דרישות הפלט:
-- ניתוח תמונת מצב אסטרטגית מפורט.
-- זיהוי "הגורם המשפיע" (The Key Driver): איזה פרמטר הוא המפתח להצלחה או הכישלון כאן.
-- תוכנית עבודה אופרטיבית: 5 המלצות קונקרטיות.
-
-החזר את התשובה בפורמט JSON בלבד, בעברית מקצועית וגבוהה:
-{
-  "strengths": { "systemic": ["חוזקה מפורטת 1"], "relational": ["חוזקה מפורטת 1"] },
-  "weaknesses": { "systemic": ["חולשה מפורטת 1"], "relational": ["חולשה מפורטת 1"] },
-  "operationalRecommendations": ["המלצה 1", "המלצה 2", "המלצה 3", "המלצה 4", "המלצה 5"],
-  "summary": "דוח מפורט הכולל ניתוח השפעה וזיהוי ה-Key Driver..."
-}
-`;
