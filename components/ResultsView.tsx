@@ -47,35 +47,62 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     }
   };
 
-  // Safe chart data calculation
-  const chartData = useMemo(() => {
-    if (!session.questions || session.questions.length === 0) return [];
+  // Safe chart data calculation and detailed component stats
+  const { chartData, componentStats } = useMemo(() => {
+    if (!session.questions || session.questions.length === 0) return { chartData: [], componentStats: [] };
     
     const groups = Array.from(new Set(session.questions.map(q => q.shortLabel || 'כללי')));
     
-    return groups.map(label => {
+    const calculatedData = groups.map(label => {
       const dataPoint: any = { subject: label };
       const relatedQuestions = session.questions.filter(q => (q.shortLabel || 'כללי') === label);
 
+      let totalGlobal = 0;
+      let countGlobal = 0;
+      const sideAverages: Record<string, number> = {};
+
       session.sides.forEach(side => {
         const sideResponses = session.responses.filter(r => r.side === side);
-        let total = 0;
-        let count = 0;
+        let totalSide = 0;
+        let countSide = 0;
         
         sideResponses.forEach(r => {
           relatedQuestions.forEach(q => {
             if (r.scores && r.scores[q.id] !== undefined) {
-              total += r.scores[q.id];
-              count++;
+              totalSide += r.scores[q.id];
+              countSide++;
+              totalGlobal += r.scores[q.id];
+              countGlobal++;
             }
           });
         });
         
-        dataPoint[side] = count > 0 ? Number((total / count).toFixed(1)) : 0;
+        const avg = countSide > 0 ? Number((totalSide / countSide).toFixed(1)) : 0;
+        dataPoint[side] = avg;
+        sideAverages[side] = avg;
       });
 
-      return dataPoint;
+      const totalAvg = countGlobal > 0 ? Number((totalGlobal / countGlobal).toFixed(1)) : 0;
+      dataPoint.average = totalAvg;
+
+      // Calculate gap if there are at least 2 sides
+      let gap = 0;
+      if (session.sides.length >= 2) {
+        const vals = session.sides.map(s => sideAverages[s]);
+        gap = Number((Math.max(...vals) - Math.min(...vals)).toFixed(1));
+      }
+
+      return {
+        ...dataPoint,
+        totalAvg,
+        gap
+      };
     });
+
+    // Sort stats from highest average to lowest
+    const stats = [...calculatedData].sort((a, b) => b.totalAvg - a.totalAvg);
+
+    return { chartData: calculatedData, componentStats: stats };
   }, [session]);
 
   const globalOutcomeScore = useMemo(() => {
@@ -171,6 +198,52 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
               <div className="flex items-center justify-center h-full text-zinc-600 font-bold italic">ממתין למענים נוספים להצגת גרף...</div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Component Deep Dive - NEW SECTION */}
+      <div className="space-y-8">
+        <div className="flex items-center gap-6">
+           <span className="text-3xl font-black text-white tracking-tight whitespace-nowrap">צלילה למרכיבי השותפות</span>
+           <div className="h-px bg-zinc-800 flex-grow"></div>
+           <p className="text-zinc-500 text-xs font-black uppercase tracking-widest">(ממוצעים מסודרים מהגבוה לנמוך)</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {componentStats.map((stat, i) => (
+            <div key={i} className="glass p-8 rounded-[2.5rem] border-white/5 space-y-4 hover:border-indigo-500/30 transition-all group">
+              <div className="flex justify-between items-start">
+                <h4 className="text-lg font-black text-white leading-tight">{stat.subject}</h4>
+                <div className="bg-indigo-500/10 px-3 py-1 rounded-lg text-indigo-400 font-black text-sm">
+                  {stat.totalAvg}
+                </div>
+              </div>
+              
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                  <span>פער בין צדדים:</span>
+                  <span className={`${stat.gap > 1.5 ? 'text-rose-400' : stat.gap > 0.8 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {stat.gap} נק'
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-indigo-500 transition-all duration-1000" 
+                    style={{ width: `${(stat.totalAvg / 7) * 100}%` }}
+                  ></div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  {session.sides.map((side, idx) => (
+                    <div key={side} className="flex flex-col">
+                      <span className="text-[9px] text-zinc-600 font-black uppercase truncate">{side}</span>
+                      <span className="text-xs font-bold text-zinc-300">{stat[side]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
