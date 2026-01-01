@@ -17,9 +17,9 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User,
 
 const STORAGE_KEY = 'synergy_db_v3';
 
-// פונקציית עזר לקבלת משתני סביבה בצורה בטוחה
 const getEnv = (key: string): string => {
   try {
+    // @ts-ignore
     const env = (import.meta as any).env;
     return env?.[key] || (process as any).env?.[key] || "";
   } catch {
@@ -36,29 +36,36 @@ const firebaseConfig = {
   appId: getEnv('VITE_FIREBASE_APP_ID')
 };
 
-// בדיקה האם הוגדרו משתני סביבה ל-Firebase
-const isFirebaseEnabled = !!firebaseConfig.projectId && firebaseConfig.projectId !== "";
+const isFirebaseConfigValid = !!firebaseConfig.projectId && firebaseConfig.projectId.length > 5;
 
 let db: any = null;
 let auth: any = null;
 
-if (isFirebaseEnabled) {
+if (isFirebaseConfigValid) {
   try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
   } catch (e) {
-    console.warn("Firebase initialization failed. Using local storage.");
+    console.warn("Firebase config exists but initialization failed:", e);
   }
 }
 
 const getLocalSessions = (): PartnershipSession[] => {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  return saved ? JSON.parse(saved) : [];
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
 };
 
 const saveLocalSessions = (sessions: PartnershipSession[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  } catch (e) {
+    console.error("Local storage save failed:", e);
+  }
 };
 
 export const dbService = {
@@ -68,12 +75,17 @@ export const dbService = {
 
   async loginAsAdmin(): Promise<User | null> {
     if (!auth) {
-      alert("שגיאה: הגדרות הענן (Firebase) חסרות. המערכת עובדת במצב מקומי בלבד במכשיר זה.");
+      console.log("No cloud config found. Login is disabled.");
       return null;
     }
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      return result.user;
+    } catch (e) {
+      console.error("Login failed:", e);
+      return null;
+    }
   },
 
   async logout(): Promise<void> {
@@ -89,14 +101,12 @@ export const dbService = {
   },
 
   async getSessions(): Promise<PartnershipSession[]> {
-    // אם יש ענן, נביא קודם ממנו
     if (db) {
       try {
         const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
         const sessions = querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
         if (sessions.length > 0) {
-          // נסנכרן גם ל-local למקרה של ניתוק
           saveLocalSessions(sessions);
           return sessions;
         }
@@ -104,42 +114,43 @@ export const dbService = {
         console.error("Cloud fetch failed:", e);
       }
     }
-    // נפילה ל-local storage אם אין ענן או שיש שגיאה
     return getLocalSessions();
   },
 
-  // האזנה לשינויים בזמן אמת (מעולה לסנכרון בין טלפון למחשב)
   subscribeToSessions(callback: (sessions: PartnershipSession[]) => void) {
-    if (!db) return () => {};
+    if (!db) {
+      // אם אין ענן, פשוט נחזיר את מה שיש לוקאלית פעם אחת
+      callback(getLocalSessions());
+      return () => {};
+    }
     const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
       const sessions = snapshot.docs.map(doc => doc.data() as PartnershipSession);
       saveLocalSessions(sessions);
       callback(sessions);
+    }, (err) => {
+      console.error("Snapshot error:", err);
+      callback(getLocalSessions());
     });
   },
 
   async saveSession(session: PartnershipSession): Promise<void> {
-    // שמירה מקומית תמיד לגיבוי
     const local = getLocalSessions();
     const idx = local.findIndex(s => s.id === session.id);
     if (idx >= 0) local[idx] = session;
     else local.push(session);
     saveLocalSessions(local);
 
-    // שמירה בענן
     if (db) {
       try {
         await setDoc(doc(db, 'sessions', session.id), session);
       } catch (e) {
         console.error("Cloud save failed:", e);
-        throw new Error("לא ניתן היה לשמור בענן. המידע נשמר זמנית על המכשיר בלבד.");
       }
     }
   },
 
   async addResponse(sessionId: string, response: ParticipantResponse): Promise<void> {
-    // שמירה מקומית
     const local = getLocalSessions();
     const session = local.find(s => s.id === sessionId);
     if (session) {
@@ -148,7 +159,6 @@ export const dbService = {
       saveLocalSessions(local);
     }
 
-    // שמירה בענן - קריטי כדי שהאדמין יראה את זה במכשיר אחר
     if (db) {
       try {
         const docRef = doc(db, 'sessions', sessionId);
