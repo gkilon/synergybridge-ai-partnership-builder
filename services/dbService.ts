@@ -2,43 +2,42 @@
 import { PartnershipSession, ParticipantResponse } from '../types';
 import { initializeApp } from 'firebase/app';
 import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  setDoc, 
-  doc, 
-  updateDoc, 
-  deleteDoc,
-  arrayUnion, 
-  query,
-  orderBy,
-  onSnapshot
+  getFirestore, collection, getDocs, setDoc, doc, updateDoc, deleteDoc,
+  arrayUnion, query, orderBy, onSnapshot
 } from 'firebase/firestore';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, signOut } from 'firebase/auth';
 
 const STORAGE_KEY = 'synergy_db_v3';
 
-// Helper for Firebase environment variables (standard for Vite/Netlify)
-const getEnv = (key: string): string => {
+/**
+ * Robustly retrieves environment variables to avoid crashes when import.meta.env is undefined.
+ */
+const getEnvVar = (key: string): string => {
   try {
     // @ts-ignore
-    return import.meta.env[key] || process.env[key] || '';
-  } catch {
-    return "";
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      return import.meta.env[key] || '';
+    }
+    if (typeof process !== 'undefined' && process.env) {
+      return (process.env as any)[key] || '';
+    }
+  } catch (e) {
+    // Silent catch for environments where access is restricted
   }
+  return '';
 };
 
 const firebaseConfig = {
-  apiKey: getEnv('VITE_FIREBASE_API_KEY'),
-  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN'),
-  projectId: getEnv('VITE_FIREBASE_PROJECT_ID'),
-  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET'),
-  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-  appId: getEnv('VITE_FIREBASE_APP_ID')
+  apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
+  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnvVar('VITE_FIREBASE_APP_ID')
 };
 
 const isFirebaseConfigValid = !!firebaseConfig.projectId && firebaseConfig.projectId.length > 5;
-
 let db: any = null;
 let auth: any = null;
 
@@ -50,6 +49,8 @@ if (isFirebaseConfigValid) {
   } catch (e) {
     console.warn("Firebase initialization failed:", e);
   }
+} else {
+  console.warn("Firebase configuration is missing or invalid. Application will run in Local Mode.");
 }
 
 const getLocalSessions = (): PartnershipSession[] => {

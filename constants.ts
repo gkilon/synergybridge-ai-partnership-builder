@@ -2,11 +2,10 @@
 import { Category, Question } from './types';
 
 export const PARTNERSHIP_METHODOLOGY = `
-גישת הממשק האפקטיבי:
-1. סנכרון מטרות (Alignment)
-2. בהירות תפקידים וסמכויות
-3. שגרות עבודה ותקשורת זורמת
-4. אמון מקצועי ובינאישי
+גישת "השותפות האקטיבית" (Active Partnership):
+1. הרעיון המארגן: "היישות השלישית" (The Third Entity)
+2. מודל 5 התנאים הקריטיים: אג'נדה, תפקידים, החלטות, שגרות, יחסים.
+3. ניתוח השפעה (Key Driver Analysis): זיהוי הקשר בין דרייברים (תהליכים/יחסים) לבין התוצאה (שביעות רצון).
 `;
 
 export const DEFAULT_QUESTIONS: Question[] = [
@@ -26,7 +25,7 @@ export const DEFAULT_QUESTIONS: Question[] = [
   { id: 'q19', category: Category.RELATIONAL, text: 'המידע שאני צריך זמין עבורי', shortLabel: 'תקשורת' },
   { id: 'q20', category: Category.RELATIONAL, text: 'שמים דברים על השולחן ללא רתיעה', shortLabel: 'תקשורת' },
 
-  // --- משתנים תלויים (Outcome) ---
+  // --- משתנים תלויים (Outcome) - לא יוצגו בגרף הדרייברים ---
   { id: 'q23', category: Category.SYSTEMIC, text: 'מהי מידת האפקטיביות של השותפות לדעתך?', shortLabel: 'OUTCOME_SATISFACTION' },
   { id: 'q24', category: Category.RELATIONAL, text: 'עד כמה אתה שבע רצון מהממשק?', shortLabel: 'OUTCOME_SATISFACTION' },
 ];
