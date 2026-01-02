@@ -25,15 +25,16 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   if (!session) return null;
 
   const analysisSummary = useMemo(() => {
-    // השתמש בשאלות מהסשן, ואם אין - בשאלות ברירת המחדל
+    // הגנה: השתמש בשאלות השמורות בסשן, ואם אין - בשאלות המחדל.
+    // חשוב: אם הסשן נוצר עם רשימת שאלות שונה, החישוב חייב להתאים למה שהמשתמש ענה עליו.
     const questions = (session.questions && session.questions.length > 0) 
       ? session.questions 
       : DEFAULT_QUESTIONS;
     
-    // זיהוי שאלות דרייברים לעומת שאלות תוצאה (Outcome)
-    // הוספת מנגנון זיהוי לפי ID כגיבוי למקרה שה-shortLabel חסר
-    const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION' && q.id !== 'q23' && q.id !== 'q24');
-    const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION' || q.id === 'q23' || q.id === 'q24');
+    // זיהוי שאלות דרייברים (לגרף הרדאר)
+    const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION');
+    // זיהוי שאלות תוצאה (למדד הבריאות הכללי)
+    const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION');
     
     const groups = Array.from(new Set(driverQs.map(q => q.shortLabel || 'כללי')));
     let maxGapValue = -1, gapLabel = '';
@@ -47,10 +48,12 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       session.sides.forEach(side => {
         const sideResponses = (session.responses || []).filter(r => r.side === side);
         let sideTotal = 0, sideCount = 0;
+        
         sideResponses.forEach(r => {
           relatedQs.forEach(q => {
             const val = r.scores?.[q.id];
-            if (val !== undefined && val !== null && !isNaN(Number(val))) { 
+            // וודא שהציון קיים והוא מספר תקין
+            if (val !== undefined && val !== null && !isNaN(Number(val)) && Number(val) > 0) { 
               sideTotal += Number(val); 
               sideCount++; 
               allSidesTotal += Number(val); 
@@ -58,11 +61,13 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
             }
           });
         });
+        
         const avg = sideCount > 0 ? Number((sideTotal / sideCount).toFixed(1)) : 0;
         dataPoint[side] = avg;
         sideAverages.push(avg);
       });
 
+      // חישוב פער תפיסתי בין הצדדים
       if (sideAverages.length >= 2) {
         const validAverages = sideAverages.filter(v => v > 0);
         if (validAverages.length >= 2) {
@@ -74,26 +79,26 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       return dataPoint;
     });
 
-    // חישוב מדד בריאות הממשק (Outcome Satisfaction)
+    // חישוב מדד בריאות הממשק (Outcome)
     let sTotal = 0, sCount = 0;
     (session.responses || []).forEach(r => {
       outcomeQs.forEach(q => {
         const score = r.scores?.[q.id];
-        if (score !== undefined && score !== null && !isNaN(Number(score))) { 
+        if (score !== undefined && score !== null && !isNaN(Number(score)) && Number(score) > 0) { 
           sTotal += Number(score); 
           sCount++; 
         }
       });
     });
 
-    // סולם הציונים הוא 1-7. אנחנו מחשבים אחוזים.
-    // אם אין שאלות תוצאה או שאין מענים, נחזיר null כדי לציין חוסר במידע
-    const satisfactionScore = sCount > 0 ? Math.round(((sTotal / sCount) - 1) / 6 * 100) : null;
+    // שינוי נוסחה: אם אין מענים לשאלות ה-Outcome, נחזיר null כדי שלא יוצג 0% מטעה.
+    // הנוסחה מחשבת אחוז מתוך סולם של 1-7. (7 = 100%, 1 = 14%)
+    const satisfactionScore = sCount > 0 ? Math.round((sTotal / sCount) / 7 * 100) : null;
 
     return { 
       driverData, 
       satisfactionScore, 
-      biggestGap: maxGapValue > 1 ? { label: gapLabel, value: maxGapValue } : null 
+      biggestGap: maxGapValue > 0.8 ? { label: gapLabel, value: maxGapValue.toFixed(1) } : null 
     };
   }, [session]);
 
@@ -104,7 +109,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       const result = await analyzePartnership(session, analysisSummary);
       onUpdate({ ...session, analysis: result });
     } catch (e: any) {
-      alert("ניתוח ה-AI נכשל. אנא וודא שמפתח ה-API תקין.");
+      alert("ניתוח הנתונים נכשל. אנא בדקו את חיבור ה-API.");
     } finally {
       setLoading(false);
     }
@@ -117,7 +122,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       const steps = await expandRecommendation(rec, session.context || session.title);
       setExpandedSteps(prev => ({ ...prev, [rec]: steps }));
     } catch {
-      alert("נכשל בפירוק ההמלצה.");
+      alert("נכשל בפירוט ההמלצה.");
     } finally {
       setExpandingRec(null);
     }
