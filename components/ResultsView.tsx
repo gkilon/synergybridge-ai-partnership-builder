@@ -25,13 +25,15 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   if (!session) return null;
 
   const analysisSummary = useMemo(() => {
-    // BUG FIX: Ensure we use DEFAULT_QUESTIONS if session.questions is missing OR empty
+    // השתמש בשאלות מהסשן, ואם אין - בשאלות ברירת המחדל
     const questions = (session.questions && session.questions.length > 0) 
       ? session.questions 
       : DEFAULT_QUESTIONS;
     
-    const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION');
-    const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION');
+    // זיהוי שאלות דרייברים לעומת שאלות תוצאה (Outcome)
+    // הוספת מנגנון זיהוי לפי ID כגיבוי למקרה שה-shortLabel חסר
+    const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION' && q.id !== 'q23' && q.id !== 'q24');
+    const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION' || q.id === 'q23' || q.id === 'q24');
     
     const groups = Array.from(new Set(driverQs.map(q => q.shortLabel || 'כללי')));
     let maxGapValue = -1, gapLabel = '';
@@ -48,7 +50,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         sideResponses.forEach(r => {
           relatedQs.forEach(q => {
             const val = r.scores?.[q.id];
-            if (val !== undefined && val !== null) { 
+            if (val !== undefined && val !== null && !isNaN(Number(val))) { 
               sideTotal += Number(val); 
               sideCount++; 
               allSidesTotal += Number(val); 
@@ -72,19 +74,21 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       return dataPoint;
     });
 
+    // חישוב מדד בריאות הממשק (Outcome Satisfaction)
     let sTotal = 0, sCount = 0;
     (session.responses || []).forEach(r => {
       outcomeQs.forEach(q => {
         const score = r.scores?.[q.id];
-        if (score !== undefined && score !== null) { 
+        if (score !== undefined && score !== null && !isNaN(Number(score))) { 
           sTotal += Number(score); 
           sCount++; 
         }
       });
     });
 
-    // Score is 1-7. Map average to percentage.
-    const satisfactionScore = sCount > 0 ? Math.round((sTotal / sCount) / 7 * 100) : 0;
+    // סולם הציונים הוא 1-7. אנחנו מחשבים אחוזים.
+    // אם אין שאלות תוצאה או שאין מענים, נחזיר null כדי לציין חוסר במידע
+    const satisfactionScore = sCount > 0 ? Math.round(((sTotal / sCount) - 1) / 6 * 100) : null;
 
     return { 
       driverData, 
@@ -100,7 +104,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       const result = await analyzePartnership(session, analysisSummary);
       onUpdate({ ...session, analysis: result });
     } catch (e: any) {
-      alert("Analysis failed. Check your API configuration.");
+      alert("ניתוח ה-AI נכשל. אנא וודא שמפתח ה-API תקין.");
     } finally {
       setLoading(false);
     }
@@ -113,7 +117,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       const steps = await expandRecommendation(rec, session.context || session.title);
       setExpandedSteps(prev => ({ ...prev, [rec]: steps }));
     } catch {
-      alert("Failed to expand steps.");
+      alert("נכשל בפירוק ההמלצה.");
     } finally {
       setExpandingRec(null);
     }
@@ -161,7 +165,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                <h3 className="text-zinc-500 text-xs font-black uppercase tracking-widest mb-1">מדד בריאות הממשק</h3>
                <div className="flex items-baseline gap-2 justify-end">
                   <span className="text-7xl font-black text-white tabular-nums">
-                    {session.responses.length > 0 ? `${analysisSummary.satisfactionScore}%` : '---'}
+                    {analysisSummary.satisfactionScore !== null ? `${analysisSummary.satisfactionScore}%` : '---'}
                   </span>
                </div>
                <p className="text-zinc-600 text-[11px] mt-4 font-bold">שקלול של אפקטיביות ושביעות רצון (Outcome)</p>
