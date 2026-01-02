@@ -3,17 +3,13 @@ import { GoogleGenAI } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
 const getApiKey = (): string => {
-  try {
-    // @ts-ignore
-    return (import.meta as any).env.VITE_GEMINI_API_KEY || process.env.API_KEY || "";
-  } catch {
-    return process.env.API_KEY || "";
-  }
+  // Use the standardized process.env.API_KEY as per guidelines
+  return process.env.API_KEY || "";
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("מפתח API חסר.");
+  if (!apiKey) throw new Error("API Key is missing from environment.");
   
   const ai = new GoogleGenAI({ apiKey });
   
@@ -27,7 +23,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     - פער תפיסה מקסימלי: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (פער של ${aggregatedData.biggestGap.value} נקודות)` : 'תיאום גבוה בין הצדדים'}
 
     הנחיות קריטיות:
-    1. דבר בגובה העיניים למנהלים. אל תשתמש במונחים אקדמיים או תיאורטיים (כמו "היישות השלישית").
+    1. דבר בגובה העיניים למנהלים. אל תשתמש במונחים אקדמיים או תיאורטיים.
     2. השתמש במושגים ניהוליים: "זרימת מידע", "מנגנוני החלטה", "חיכוך תפעולי", "אמון מקצועי", "סנכרון מטרות".
     3. תן ערך מוסף מעבר לגרף: הסבר *למה* הפערים קיימים ואיך הם משפיעים על השורה התחתונה.
     4. ההמלצות חייבות להיות ברות ביצוע.
@@ -50,19 +46,19 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
       contents: prompt,
       config: { 
         responseMimeType: "application/json",
-        temperature: 0.4,
-        thinkingConfig: { thinkingBudget: 0 }
+        temperature: 0.4
       }
     });
     return JSON.parse(response.text?.trim() || "{}");
   } catch (error) {
+    console.error("Gemini analyzePartnership Error:", error);
     throw new Error("ניתוח AI נכשל. נסה שנית.");
   }
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error("מפתח API חסר.");
+  if (!apiKey) throw new Error("API Key is missing.");
   const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
@@ -88,7 +84,8 @@ export const expandRecommendation = async (recommendation: string, context: stri
       }
     });
     return JSON.parse(response.text?.trim() || "[]");
-  } catch {
+  } catch (error) {
+    console.error("Gemini expandRecommendation Error:", error);
     return ["ודאו קיום פגישת סנכרון שבועית קבועה", "הגדירו מחדש את סמכויות קבלת ההחלטות בכל צד", "צרו ערוץ תקשורת ישיר לפתרון בעיות בזמן אמת"];
   }
 };
