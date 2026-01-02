@@ -10,31 +10,32 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User,
 const STORAGE_KEY = 'synergy_db_v3';
 
 /**
- * Robustly retrieves environment variables to avoid crashes when import.meta.env is undefined.
+ * Safely retrieves environment variables for Firebase configuration.
  */
-const getEnvVar = (key: string): string => {
+const getFirebaseEnv = (key: string): string => {
   try {
+    // Attempt Vite-style access
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env) {
       // @ts-ignore
-      return import.meta.env[key] || '';
+      const val = import.meta.env[key];
+      if (val) return val;
     }
+    // Fallback to process.env
     if (typeof process !== 'undefined' && process.env) {
       return (process.env as any)[key] || '';
     }
-  } catch (e) {
-    // Silent catch for environments where access is restricted
-  }
+  } catch (e) {}
   return '';
 };
 
 const firebaseConfig = {
-  apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
-  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
-  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
-  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
-  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-  appId: getEnvVar('VITE_FIREBASE_APP_ID')
+  apiKey: getFirebaseEnv('VITE_FIREBASE_API_KEY'),
+  authDomain: getFirebaseEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: getFirebaseEnv('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getFirebaseEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getFirebaseEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getFirebaseEnv('VITE_FIREBASE_APP_ID')
 };
 
 const isFirebaseConfigValid = !!firebaseConfig.projectId && firebaseConfig.projectId.length > 5;
@@ -49,8 +50,6 @@ if (isFirebaseConfigValid) {
   } catch (e) {
     console.warn("Firebase initialization failed:", e);
   }
-} else {
-  console.warn("Firebase configuration is missing or invalid. Application will run in Local Mode.");
 }
 
 const getLocalSessions = (): PartnershipSession[] => {

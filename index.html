@@ -59,10 +59,10 @@
       }
     </style>
     <script>
-      // Only shim process if it doesn't exist to avoid overwriting environment-injected process
-      if (typeof window.process === 'undefined') {
-        window.process = { env: { NODE_ENV: 'production' } };
-      }
+      // Non-destructive shim for process.env
+      window.process = window.process || {};
+      window.process.env = window.process.env || {};
+      if (!window.process.env.NODE_ENV) window.process.env.NODE_ENV = 'production';
     </script>
     <script type="importmap">
 {
@@ -76,6 +76,7 @@
     "lucide-react": "https://esm.sh/lucide-react@^0.460.0",
     "firebase/app": "https://esm.sh/firebase@10.8.0/app",
     "firebase/firestore": "https://esm.sh/firebase@10.8.0/firestore",
+    "firebase/auth": "https://esm.sh/firebase@10.8.0/auth",
     "firebase/": "https://esm.sh/firebase@^12.7.0/"
   }
 }

@@ -2,20 +2,14 @@
 import { GoogleGenAI } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
-/**
- * Safely retrieves the Gemini API key from the environment.
- */
-const getGeminiApiKey = (): string => {
-  try {
-    return process.env.API_KEY || '';
-  } catch {
-    return '';
-  }
-};
-
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) throw new Error("מפתח API חסר במערכת. אנא וודא שההגדרות תקינות (process.env.API_KEY).");
+  // STRICT REQUIREMENT: Access process.env.API_KEY directly as per senior engineer guidelines
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    console.error("Gemini API Key is missing in process.env.API_KEY");
+    throw new Error("מפתח API חסר במערכת. אנא וודא שהגדרות process.env.API_KEY תקינות.");
+  }
   
   const ai = new GoogleGenAI({ apiKey });
   
@@ -46,14 +40,14 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     });
     return JSON.parse(response.text?.trim() || "{}");
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error("Gemini analyzePartnership Error:", error);
     throw error;
   }
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) return ["Error: API Key missing (process.env.API_KEY)"];
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return ["לא ניתן לפרט המלצה ללא מפתח API (process.env.API_KEY)."];
   
   const ai = new GoogleGenAI({ apiKey });
   const prompt = `הפוך את ההמלצה הבאה לצעדים אופרטיביים: "${recommendation}". הקשר: "${context}". החזר רשימת JSON של מחרוזות.`;
@@ -68,7 +62,7 @@ export const expandRecommendation = async (recommendation: string, context: stri
     });
     return JSON.parse(response.text?.trim() || "[]");
   } catch (error) {
-    console.error("Gemini Expand Error:", error);
+    console.error("Gemini expandRecommendation Error:", error);
     return ["בצע פגישת סנכרון", "הגדר תחומי אחריות"];
   }
 };

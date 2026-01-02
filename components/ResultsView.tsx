@@ -85,7 +85,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       onUpdate({ ...session, analysis: result });
     } catch (e: any) {
       console.error("AI Analysis failed:", e);
-      alert("ניתוח ה-AI נכשל. וודא שחיבור האינטרנט תקין ונסה שוב.");
+      alert("ניתוח ה-AI נכשל. וודא שחיבור ה-API תקין (process.env.API_KEY).");
     } finally {
       setLoading(false);
     }
@@ -161,8 +161,8 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
           {/* RADAR CHART - ENSURING VISIBILITY ON MOBILE */}
           <div className="bg-[#09090b] rounded-[2rem] md:rounded-[3.5rem] p-4 md:p-12 border border-white/5 shadow-3xl min-h-[400px] md:min-h-[600px] flex flex-col">
              <h3 className="text-lg md:text-2xl font-black text-white mb-6 md:mb-8 border-r-4 border-indigo-500 pr-4 md:pr-5">מיפוי דרייברים אסטרטגיים</h3>
-             <div className="flex-grow w-full h-[350px] md:h-full overflow-visible">
-               <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+             <div className="flex-grow w-full h-[400px] md:h-[500px] overflow-visible">
+               <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={analysisSummary.driverData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
                     <PolarGrid stroke="#1a1a1e" />
                     <PolarAngleAxis 
@@ -203,7 +203,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         {/* LEFT: STRATEGIC SIDEBAR (AI Insights) */}
         <div className="lg:col-span-5 space-y-6 md:space-y-8 md:order-1 lg:sticky lg:top-28">
           
-          <div className="min-h-[300px] md:min-h-[600px] flex flex-col">
+          <div className="min-h-[300px] flex flex-col">
             {!session.analysis ? (
               <div className="bg-[#09090b] rounded-[2rem] md:rounded-[3.5rem] p-10 md:p-16 border-dashed border-2 border-zinc-800/50 text-center flex flex-col items-center justify-center flex-grow space-y-6 opacity-50 group hover:border-indigo-500/30 transition-all">
                  <div className="w-16 h-16 md:w-24 md:h-24 bg-zinc-900 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center text-3xl md:text-5xl grayscale group-hover:grayscale-0 transition-all">🧠</div>
