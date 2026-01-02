@@ -1,17 +1,26 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
-export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  // STRICT REQUIREMENT: Access process.env.API_KEY directly as per senior engineer guidelines
-  const apiKey = process.env.API_KEY;
+export const analyzePartnership = async (
+  session: PartnershipSession, 
+  aggregatedData: any
+): Promise<AIAnalysis> => {
+  // גישה נכונה למשתנה סביבה ב-Vite
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   
   if (!apiKey) {
-    console.error("Gemini API Key is missing in process.env.API_KEY");
-    throw new Error("מפתח API חסר במערכת. אנא וודא שהגדרות process.env.API_KEY תקינות.");
+    console.error("Gemini API Key is missing");
+    throw new Error("מפתח API חסר במערכת. אנא וודא שהגדרות VITE_GEMINI_API_KEY תקינות.");
   }
   
-  const ai = new GoogleGenAI({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-1.5-pro",
+    generationConfig: {
+      temperature: 0.4,
+      responseMimeType: "application/json"
+    }
+  });
   
   const prompt = `
     תפקיד: יועץ ניהולי בכיר המומחה בממשקי עבודה.
@@ -30,37 +39,37 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: { 
-        responseMimeType: "application/json", 
-        temperature: 0.4 
-      }
-    });
-    return JSON.parse(response.text?.trim() || "{}");
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    return JSON.parse(text.trim());
   } catch (error) {
     console.error("Gemini analyzePartnership Error:", error);
     throw error;
   }
 };
 
-export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) return ["לא ניתן לפרט המלצה ללא מפתח API (process.env.API_KEY)."];
+export const expandRecommendation = async (
+  recommendation: string, 
+  context: string
+): Promise<string[]> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) return ["לא ניתן לפרט המלצה ללא מפתח API."];
   
-  const ai = new GoogleGenAI({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",
+    generationConfig: {
+      responseMimeType: "application/json"
+    }
+  });
+  
   const prompt = `הפוך את ההמלצה הבאה לצעדים אופרטיביים: "${recommendation}". הקשר: "${context}". החזר רשימת JSON של מחרוזות.`;
   
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: { 
-        responseMimeType: "application/json" 
-      }
-    });
-    return JSON.parse(response.text?.trim() || "[]");
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    return JSON.parse(text.trim());
   } catch (error) {
     console.error("Gemini expandRecommendation Error:", error);
     return ["בצע פגישת סנכרון", "הגדר תחומי אחריות"];
