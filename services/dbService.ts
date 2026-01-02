@@ -18,19 +18,10 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User,
 
 const STORAGE_KEY = 'synergy_db_v3';
 
-const getApiKey = (): string => {
-  try {
-    // @ts-ignore
-    return import.meta.env.VITE_GEMINI_API_KEY || '';
-  } catch {
-    return '';
-  }
-};
-
+// Use process.env strictly as per core instructions
 const getEnv = (key: string): string => {
   try {
-    // @ts-ignore
-    return import.meta.env[key] || '';
+    return process.env[key] || '';
   } catch {
     return "";
   }
@@ -92,10 +83,14 @@ export const dbService = {
   },
   async getSessions(): Promise<PartnershipSession[]> {
     if (db) {
-      const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const sessions = querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
-      if (sessions.length > 0) { saveLocalSessions(sessions); return sessions; }
+      try {
+        const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const sessions = querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
+        if (sessions.length > 0) { saveLocalSessions(sessions); return sessions; }
+      } catch (e) {
+        console.error("Firestore fetch failed, falling back to local storage", e);
+      }
     }
     return getLocalSessions();
   },
@@ -106,6 +101,9 @@ export const dbService = {
       const sessions = snapshot.docs.map(doc => doc.data() as PartnershipSession);
       saveLocalSessions(sessions);
       callback(sessions);
+    }, (err) => {
+      console.error("Snapshot failed, using local", err);
+      callback(getLocalSessions());
     });
   },
   async saveSession(session: PartnershipSession): Promise<void> {

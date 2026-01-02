@@ -85,7 +85,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       onUpdate({ ...session, analysis: result });
     } catch (e: any) {
       console.error("AI Analysis failed:", e);
-      alert("ניתוח ה-AI נכשל. וודא שחיבור האינטרנט תקין ונסה שוב.");
+      alert(e.message || "ניתוח ה-AI נכשל.");
     } finally {
       setLoading(false);
     }
@@ -110,168 +110,118 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   ] : [];
 
   return (
-    <div className="space-y-8 md:space-y-12 animate-fadeIn pb-32 max-w-[1700px] mx-auto px-2 md:px-4 text-right" dir="rtl">
+    <div className="space-y-6 md:space-y-12 animate-fadeIn pb-32 max-w-[1700px] mx-auto px-2 md:px-4 text-right" dir="rtl">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-zinc-900 pb-8">
-        <div className="space-y-2">
-           <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter leading-tight">{session.title}</h2>
-           <p className="text-zinc-500 font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] md:tracking-[0.4em]">דאשבורד ניהולי ומפת דרייברים</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-zinc-900 pb-6 md:pb-10">
+        <div className="space-y-1">
+           <h2 className="text-2xl md:text-5xl font-black text-white tracking-tighter leading-tight">{session.title}</h2>
+           <p className="text-zinc-500 font-bold text-[9px] md:text-xs uppercase tracking-widest md:tracking-[0.4em]">דאשבורד ניהולי ומפת דרייברים</p>
         </div>
-        <div className="flex gap-3 w-full md:w-auto">
-           <button onClick={onBack} className="flex-1 md:flex-none bg-zinc-900 text-zinc-500 px-6 py-3 md:px-8 md:py-4 rounded-xl md:rounded-2xl font-black border border-zinc-800 hover:text-white transition-all text-sm md:text-base">חזרה</button>
+        <div className="flex gap-2 w-full md:w-auto">
+           <button onClick={onBack} className="flex-1 md:flex-none bg-zinc-900 text-zinc-500 px-6 py-3 rounded-xl font-black border border-zinc-800 text-sm md:text-base">חזרה</button>
            <button 
              onClick={handleAnalyze} 
              disabled={loading} 
-             className={`flex-[2] md:flex-none px-6 py-3 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black transition-all text-sm md:text-base ${loading ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 active:scale-95'}`}
+             className={`flex-[2] md:flex-none px-6 py-3 rounded-xl font-black transition-all text-sm md:text-base ${loading ? 'bg-zinc-800 text-zinc-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30'}`}
            >
-             {loading ? 'מנתח נתונים...' : '✨ ניתוח AI'}
+             {loading ? 'מנתח...' : '✨ ניתוח AI'}
            </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-10">
         
-        {/* RIGHT: DATA & RADAR (FACTS) */}
+        {/* RIGHT: DATA */}
         <div className="lg:col-span-7 space-y-6 md:order-2">
           
           {/* OUTCOME SCORE */}
-          <div className="bg-[#09090b] rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-white/5 shadow-3xl flex flex-col md:flex-row justify-between items-center gap-6 overflow-hidden relative group">
+          <div className="bg-[#09090b] rounded-[2rem] p-6 md:p-12 border border-white/5 shadow-3xl flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full"></div>
-             
-             <div className="space-y-3 md:space-y-4 relative z-10 text-right w-full md:w-auto">
-                <h3 className="text-xl md:text-3xl font-black text-white">בריאות הממשק (Outcome)</h3>
-                <p className="text-zinc-500 text-xs md:text-base max-w-sm leading-relaxed">
-                   מדד משוקלל המבטא אפקטיביות ושביעות רצון.
-                </p>
+             <div className="relative z-10 text-right w-full md:w-auto">
+                <h3 className="text-lg md:text-3xl font-black text-white mb-2">בריאות הממשק</h3>
                 {analysisSummary.biggestGap && (
-                   <div className="inline-flex items-center gap-2 bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded-lg border border-rose-500/20 text-[10px] md:text-xs font-black animate-pulse">
-                      <span>🚨 פער תפיסה: {analysisSummary.biggestGap.label}</span>
+                   <div className="inline-flex bg-rose-500/10 text-rose-400 px-3 py-1 rounded-lg border border-rose-500/20 text-[10px] font-black">
+                      🚨 פער בדרייבר: {analysisSummary.biggestGap.label}
                    </div>
                 )}
              </div>
-
-             <div className="relative z-10 flex flex-col items-center justify-center">
-                <span className="text-7xl md:text-[10rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-2xl">
+             <div className="relative z-10">
+                <span className="text-6xl md:text-[9rem] font-black text-white leading-none tracking-tighter drop-shadow-2xl">
                   {analysisSummary.satisfactionScore}%
                 </span>
              </div>
           </div>
 
-          {/* RADAR CHART - ENSURING VISIBILITY ON MOBILE */}
-          <div className="bg-[#09090b] rounded-[2rem] md:rounded-[3.5rem] p-4 md:p-12 border border-white/5 shadow-3xl min-h-[400px] md:min-h-[600px] flex flex-col">
-             <h3 className="text-lg md:text-2xl font-black text-white mb-6 md:mb-8 border-r-4 border-indigo-500 pr-4 md:pr-5">מיפוי דרייברים אסטרטגיים</h3>
-             <div className="flex-grow w-full h-[350px] md:h-full overflow-visible">
-               <ResponsiveContainer width="100%" height="100%" minHeight={300}>
-                  <RadarChart data={analysisSummary.driverData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+          {/* RADAR CHART */}
+          <div className="bg-[#09090b] rounded-[2rem] p-4 md:p-12 border border-white/5 shadow-3xl min-h-[350px] md:min-h-[600px] flex flex-col">
+             <h3 className="text-lg md:text-2xl font-black text-white mb-4 md:mb-8 border-r-4 border-indigo-500 pr-4">דרייברים אסטרטגיים</h3>
+             <div className="flex-grow w-full aspect-square md:aspect-auto">
+               <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={analysisSummary.driverData}>
                     <PolarGrid stroke="#1a1a1e" />
-                    <PolarAngleAxis 
-                      dataKey="subject" 
-                      tick={{ fill: '#71717a', fontSize: 11, fontWeight: 900 }}
-                    />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#71717a', fontSize: 10, fontWeight: 800 }} />
                     <PolarRadiusAxis domain={[0, 7]} tick={false} axisLine={false} />
-                    <Radar 
-                      name="ממוצע" 
-                      dataKey="כולל" 
-                      stroke="#52525b" 
-                      fill="#52525b" 
-                      fillOpacity={0.03} 
-                      strokeWidth={1} 
-                      strokeDasharray="4 4" 
-                    />
+                    <Radar name="ממוצע" dataKey="כולל" stroke="#52525b" fill="#52525b" fillOpacity={0.03} strokeWidth={1} strokeDasharray="3 3" />
                     {session.sides.map((side, idx) => (
-                      <Radar 
-                        key={side} 
-                        name={side} 
-                        dataKey={side} 
-                        stroke={SIDE_COLORS[idx % SIDE_COLORS.length]} 
-                        fill={SIDE_COLORS[idx % SIDE_COLORS.length]} 
-                        fillOpacity={0.1} 
-                        strokeWidth={3} 
-                      />
+                      <Radar key={side} name={side} dataKey={side} stroke={SIDE_COLORS[idx % SIDE_COLORS.length]} fill={SIDE_COLORS[idx % SIDE_COLORS.length]} fillOpacity={0.1} strokeWidth={3} />
                     ))}
-                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#000', border: '1px solid #1a1a1e', borderRadius: '12px', color: '#fff', textAlign: 'right', fontSize: '12px' }} 
-                    />
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#000', border: '1px solid #1a1a1e', borderRadius: '12px', fontSize: '12px' }} />
                   </RadarChart>
                </ResponsiveContainer>
              </div>
           </div>
         </div>
 
-        {/* LEFT: STRATEGIC SIDEBAR (AI Insights) */}
-        <div className="lg:col-span-5 space-y-6 md:space-y-8 md:order-1 lg:sticky lg:top-28">
-          
-          <div className="min-h-[300px] md:min-h-[600px] flex flex-col">
-            {!session.analysis ? (
-              <div className="bg-[#09090b] rounded-[2rem] md:rounded-[3.5rem] p-10 md:p-16 border-dashed border-2 border-zinc-800/50 text-center flex flex-col items-center justify-center flex-grow space-y-6 opacity-50 group hover:border-indigo-500/30 transition-all">
-                 <div className="w-16 h-16 md:w-24 md:h-24 bg-zinc-900 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center text-3xl md:text-5xl grayscale group-hover:grayscale-0 transition-all">🧠</div>
-                 <div className="space-y-3">
-                    <h3 className="text-lg md:text-xl font-black text-white">ממתין לניתוח AI</h3>
-                    <p className="text-zinc-500 text-xs md:text-sm max-w-xs mx-auto leading-relaxed">
-                       לחץ על הכפתור למעלה כדי לקבל תובנות אופרטיביות וצעדי עבודה.
-                    </p>
+        {/* LEFT: AI INSIGHTS */}
+        <div className="lg:col-span-5 space-y-6 md:order-1 lg:sticky lg:top-28">
+          {!session.analysis ? (
+            <div className="bg-[#09090b] rounded-[2rem] p-12 border-dashed border-2 border-zinc-800/50 text-center opacity-40">
+               <p className="text-sm font-bold text-zinc-500">הרץ ניתוח לקבלת תובנות אופרטיביות</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-indigo-600 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
+                 <h3 className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-2">אבחון ניהולי</h3>
+                 <p className="text-lg md:text-xl font-black leading-tight relative z-10">{session.analysis.summary}</p>
+              </div>
+
+              <div className="bg-[#0c0c0e] rounded-[2rem] p-6 md:p-10 border border-white/5 space-y-6">
+                 <h3 className="text-xl font-black text-white flex items-center gap-3">
+                    <span className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-base">🚀</span>
+                    צעדים לביצוע
+                 </h3>
+                 <div className="space-y-4">
+                    {allRecs.map((rec, i) => (
+                      <div key={i} className="space-y-3">
+                         <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <p className="text-sm md:text-base font-bold text-zinc-100 flex-grow">{rec}</p>
+                            <button 
+                              onClick={() => handleExpandRec(rec)}
+                              disabled={expandingRec === rec}
+                              className={`w-full md:w-auto px-4 py-2 rounded-xl text-[10px] font-black transition-all ${expandedSteps[rec] ? 'bg-zinc-800 text-zinc-600' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}
+                            >
+                              {expandingRec === rec ? 'מעבד...' : expandedSteps[rec] ? 'צעדים מוכנים' : 'איך מבצעים?'}
+                            </button>
+                         </div>
+                         {expandedSteps[rec] && (
+                           <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-6 space-y-3 animate-slideDown">
+                              {expandedSteps[rec].map((step, idx) => (
+                                <div key={idx} className="flex gap-3 items-start">
+                                   <span className="w-5 h-5 bg-indigo-500 text-white rounded-lg flex items-center justify-center text-[10px] font-black shrink-0">{idx+1}</span>
+                                   <p className="text-xs md:text-sm font-bold text-zinc-300 leading-relaxed">{step}</p>
+                                </div>
+                              ))}
+                           </div>
+                         )}
+                      </div>
+                    ))}
                  </div>
               </div>
-            ) : (
-              <div className="space-y-6 md:space-y-8 animate-slideDown">
-                
-                {/* AI SUMMARY BOX */}
-                <div className="bg-indigo-600 rounded-[2rem] p-8 md:p-10 text-white shadow-4xl relative overflow-hidden group">
-                   <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/10 blur-3xl rounded-full"></div>
-                   <h3 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80 mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                      אבחון ניהולי (AI)
-                   </h3>
-                   <p className="text-lg md:text-2xl font-black leading-tight relative z-10">{session.analysis.summary}</p>
-                </div>
-
-                {/* PRACTICAL RECOMMENDATIONS SECTION */}
-                <div className="bg-[#0c0c0e] rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 border border-white/5 space-y-6 md:space-y-8">
-                   <div className="flex items-center gap-3 md:gap-4">
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-500 rounded-xl md:rounded-2xl flex items-center justify-center text-xl md:text-2xl shadow-xl shadow-indigo-500/20">🚀</div>
-                      <h3 className="text-xl md:text-2xl font-black text-white">צעדים לביצוע</h3>
-                   </div>
-
-                   <div className="space-y-5 md:space-y-6">
-                      {allRecs.map((rec, i) => (
-                        <div key={i} className="space-y-3">
-                           <div className="bg-zinc-900/40 p-5 md:p-6 rounded-2xl md:rounded-3xl border border-zinc-800/50 flex flex-col md:flex-row justify-between items-center gap-4 group hover:border-indigo-500/40 transition-all">
-                              <p className="text-sm md:text-lg font-bold text-zinc-100 flex-grow leading-snug">{rec}</p>
-                              <button 
-                                onClick={() => handleExpandRec(rec)}
-                                disabled={expandingRec === rec}
-                                className={`shrink-0 w-full md:w-auto px-5 py-2.5 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black transition-all ${expandedSteps[rec] ? 'bg-zinc-800 text-zinc-600 cursor-default' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white'}`}
-                              >
-                                {expandingRec === rec ? 'מעבד...' : expandedSteps[rec] ? 'צעדים מוכנים' : 'איך מבצעים?'}
-                              </button>
-                           </div>
-                           
-                           {/* DRILL-DOWN ACTION STEPS */}
-                           {expandedSteps[rec] && (
-                             <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-[1.5rem] p-6 md:p-8 space-y-4 animate-slideDown shadow-inner">
-                                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest border-b border-indigo-500/10 pb-2 inline-block">צעדים קונקרטיים:</h4>
-                                <div className="space-y-3">
-                                   {expandedSteps[rec].map((step, idx) => (
-                                     <div key={idx} className="flex gap-3 md:gap-4 items-start">
-                                        <span className="w-6 h-6 md:w-7 md:h-7 bg-indigo-500 text-white rounded-lg md:rounded-xl flex items-center justify-center text-[10px] md:text-xs font-black shrink-0 shadow-lg">{idx+1}</span>
-                                        <p className="text-xs md:text-base font-bold text-zinc-300 leading-relaxed">{step}</p>
-                                     </div>
-                                   ))}
-                                </div>
-                             </div>
-                           )}
-                        </div>
-                      ))}
-                   </div>
-                </div>
-
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-
       </div>
     </div>
   );
