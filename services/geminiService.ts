@@ -1,95 +1,98 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
-const getAI = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing in process.env.API_KEY");
-  return new GoogleGenAI({ apiKey });
+const getApiKey = (): string => {
+  // גישה נכונה למשתנה סביבה ב-Vite
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("מפתח API חסר. וודא שהגדרת VITE_GEMINI_API_KEY ב-Netlify");
+  }
+  
+  return apiKey;
 };
 
-export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  const ai = getAI();
+export const analyzePartnership = async (
+  session: PartnershipSession, 
+  aggregatedData: any
+): Promise<AIAnalysis> => {
+  const apiKey = getApiKey();
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
   
   const prompt = `
-    Role: Senior Management Consultant specialized in organizational interfaces.
-    Mission: Provide a sharp, data-driven diagnosis of a work partnership interface.
-    Context: ${session.context || 'General organizational interface'}
-    Raw Data:
-    - Interface Health Score (Outcome): ${aggregatedData.satisfactionScore}%
-    - Drivers performance (Systemic vs Relational): ${JSON.stringify(aggregatedData.driverData)}
-    - Biggest Perception Gap: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (Gap of ${aggregatedData.biggestGap.value} points)` : 'High alignment between sides'}
-    
-    Output Language: Hebrew (עברית).
-    Constraints: Return ONLY a JSON object matching the requested schema.
-  `;
+תפקיד: יועץ ניהולי בכיר המומחה בממשקי עבודה ארגוניים.
+משימה: אבחון חד ומונחה נתונים של ממשק עבודה.
+הקשר: ${session.context || 'ממשק ארגוני כללי'}
+
+נתונים גולמיים:
+- ציון בריאות הממשק: ${aggregatedData.satisfactionScore}%
+- ביצועי דרייברים (מערכתי מול יחסי): ${JSON.stringify(aggregatedData.driverData)}
+- פער תפיסה מקסימלי: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (פער של ${aggregatedData.biggestGap.value} נקודות)` : 'תיאום גבוה בין הצדדים'}
+
+החזר JSON בלבד במבנה הבא:
+{
+  "summary": "אבחון המצב ב-2-3 משפטים חדים",
+  "recommendations": {
+    "systemic": ["המלצה מערכתית 1", "המלצה מערכתית 2"],
+    "relational": ["המלצה יחסית 1", "המלצה יחסית 2"]
+  },
+  "strengths": {
+    "systemic": ["חוזקה מערכתית 1", "חוזקה מערכתית 2"],
+    "relational": ["חוזקה יחסית 1", "חוזקה יחסית 2"]
+  },
+  "weaknesses": {
+    "systemic": ["חולשה מערכתית 1", "חולשה מערכתית 2"],
+    "relational": ["חולשה יחסית 1", "חולשה יחסית 2"]
+  }
+}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            summary: { type: Type.STRING, description: 'Diagnosis of the situation in 3 punchy sentences.' },
-            recommendations: {
-              type: Type.OBJECT,
-              properties: {
-                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
-                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ['systemic', 'relational']
-            },
-            strengths: {
-              type: Type.OBJECT,
-              properties: {
-                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
-                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ['systemic', 'relational']
-            },
-            weaknesses: {
-              type: Type.OBJECT,
-              properties: {
-                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
-                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ['systemic', 'relational']
-            }
-          },
-          required: ['summary', 'recommendations', 'strengths', 'weaknesses']
-        }
-      }
-    });
-
-    return JSON.parse(response.text?.trim() || "{}");
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    
+    // ניקוי מ-markdown backticks
+    const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    return JSON.parse(cleanText);
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    throw error;
+    throw new Error("שגיאה בניתוח הממשק. אנא נסה שוב.");
   }
 };
 
-export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  const ai = getAI();
-  const prompt = `Convert this high-level recommendation into 4-5 concrete operational steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
-  
+export const expandRecommendation = async (
+  recommendation: string, 
+  context: string
+): Promise<string[]> => {
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING }
-        }
-      }
-    });
-    return JSON.parse(response.text?.trim() || "[]");
+    const apiKey = getApiKey();
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    const prompt = `
+הפוך את ההמלצה הבאה ל-4-5 צעדים אופרטיביים קונקרטיים בעברית:
+
+המלצה: "${recommendation}"
+הקשר: "${context}"
+
+החזר רק מערך JSON של מחרוזות, ללא טקסט נוסף:
+["צעד 1", "צעד 2", "צעד 3", "צעד 4"]`;
+    
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    
+    // ניקוי מ-markdown backticks
+    const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    return JSON.parse(cleanText);
   } catch (error) {
     console.error("Gemini Expansion Error:", error);
-    return ["קבע פגישת סנכרון", "הגדר יעדים משותפים", "תעד את ההסכמות"];
+    return [
+      "קבע פגישת סנכרון בין הצדדים",
+      "הגדר יעדים משותפים ומדידים",
+      "תעד את ההסכמות בכתב",
+      "קבע נקודות ביקורת תקופתיות"
+    ];
   }
 };
