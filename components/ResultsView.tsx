@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import { analyzePartnership, expandRecommendation } from '../services/geminiService';
 import { DEFAULT_QUESTIONS } from '../constants';
-import { Zap, Target, Activity, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Zap, Target, Activity, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   session: PartnershipSession | undefined;
@@ -25,12 +25,15 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
   if (!session) return null;
 
   const analysisSummary = useMemo(() => {
-    const questions = session.questions || DEFAULT_QUESTIONS;
+    // BUG FIX: Ensure we use DEFAULT_QUESTIONS if session.questions is missing OR empty
+    const questions = (session.questions && session.questions.length > 0) 
+      ? session.questions 
+      : DEFAULT_QUESTIONS;
     
     const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION');
     const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION');
     
-    const groups = Array.from(new Set(driverQs.map(q => q.shortLabel || 'General')));
+    const groups = Array.from(new Set(driverQs.map(q => q.shortLabel || 'כללי')));
     let maxGapValue = -1, gapLabel = '';
 
     const driverData = groups.map(label => {
@@ -44,8 +47,13 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         let sideTotal = 0, sideCount = 0;
         sideResponses.forEach(r => {
           relatedQs.forEach(q => {
-            const val = r.scores[q.id];
-            if (val) { sideTotal += Number(val); sideCount++; allSidesTotal += Number(val); allSidesCount++; }
+            const val = r.scores?.[q.id];
+            if (val !== undefined && val !== null) { 
+              sideTotal += Number(val); 
+              sideCount++; 
+              allSidesTotal += Number(val); 
+              allSidesCount++; 
+            }
           });
         });
         const avg = sideCount > 0 ? Number((sideTotal / sideCount).toFixed(1)) : 0;
@@ -54,8 +62,11 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       });
 
       if (sideAverages.length >= 2) {
-        const gap = Math.abs(Math.max(...sideAverages) - Math.min(...sideAverages));
-        if (gap > maxGapValue) { maxGapValue = gap; gapLabel = label; }
+        const validAverages = sideAverages.filter(v => v > 0);
+        if (validAverages.length >= 2) {
+          const gap = Math.abs(Math.max(...validAverages) - Math.min(...validAverages));
+          if (gap > maxGapValue) { maxGapValue = gap; gapLabel = label; }
+        }
       }
       dataPoint['Avg'] = allSidesCount > 0 ? Number((allSidesTotal / allSidesCount).toFixed(1)) : 0;
       return dataPoint;
@@ -64,13 +75,22 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     let sTotal = 0, sCount = 0;
     (session.responses || []).forEach(r => {
       outcomeQs.forEach(q => {
-        const score = r.scores[q.id];
-        if (score) { sTotal += Number(score); sCount++; }
+        const score = r.scores?.[q.id];
+        if (score !== undefined && score !== null) { 
+          sTotal += Number(score); 
+          sCount++; 
+        }
       });
     });
+
+    // Score is 1-7. Map average to percentage.
     const satisfactionScore = sCount > 0 ? Math.round((sTotal / sCount) / 7 * 100) : 0;
 
-    return { driverData, satisfactionScore, biggestGap: maxGapValue > 1 ? { label: gapLabel, value: maxGapValue } : null };
+    return { 
+      driverData, 
+      satisfactionScore, 
+      biggestGap: maxGapValue > 1 ? { label: gapLabel, value: maxGapValue } : null 
+    };
   }, [session]);
 
   const handleAnalyze = async () => {
@@ -80,7 +100,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       const result = await analyzePartnership(session, analysisSummary);
       onUpdate({ ...session, analysis: result });
     } catch (e: any) {
-      alert("Analysis failed. Ensure process.env.API_KEY is active.");
+      alert("Analysis failed. Check your API configuration.");
     } finally {
       setLoading(false);
     }
@@ -121,7 +141,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
            <button 
              onClick={handleAnalyze} 
              disabled={loading} 
-             className={`flex-[2] md:flex-none px-12 py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-3 ${loading ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30'}`}
+             className={`flex-[2] md:flex-none px-12 py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-3 ${loading ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 active:scale-95'}`}
            >
              {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <Zap size={20} />}
              {loading ? 'מנתח נתונים...' : 'הפעל ניתוח AI'}
@@ -140,7 +160,9 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                <Activity className="text-indigo-500 mb-6" size={32} />
                <h3 className="text-zinc-500 text-xs font-black uppercase tracking-widest mb-1">מדד בריאות הממשק</h3>
                <div className="flex items-baseline gap-2 justify-end">
-                  <span className="text-7xl font-black text-white tabular-nums">{analysisSummary.satisfactionScore}%</span>
+                  <span className="text-7xl font-black text-white tabular-nums">
+                    {session.responses.length > 0 ? `${analysisSummary.satisfactionScore}%` : '---'}
+                  </span>
                </div>
                <p className="text-zinc-600 text-[11px] mt-4 font-bold">שקלול של אפקטיביות ושביעות רצון (Outcome)</p>
             </div>
@@ -164,12 +186,12 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
             </div>
           </div>
 
-          <div className="bg-[#09090b] rounded-[3.5rem] p-12 border border-white/5 shadow-3xl flex flex-col min-h-[550px]">
+          <div className="bg-[#09090b] rounded-[3.5rem] p-12 border border-white/5 shadow-3xl flex flex-col min-h-[600px]">
              <div className="flex items-center gap-4 mb-10 justify-end">
                 <h3 className="text-2xl font-black text-white">מיפוי דרייברים אסטרטגיים</h3>
                 <Target className="text-indigo-500" />
              </div>
-             <div className="flex-grow w-full h-[400px]">
+             <div className="flex-grow w-full h-[450px]">
                <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={analysisSummary.driverData} margin={{ top: 10, right: 40, bottom: 10, left: 40 }}>
                     <PolarGrid stroke="#1a1a1e" />
