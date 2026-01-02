@@ -7,48 +7,32 @@ import {
 } from 'firebase/firestore';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, signOut } from 'firebase/auth';
 
-const STORAGE_KEY = 'synergy_db_v3';
+const STORAGE_KEY = 'synergy_db_final_v1';
 
-/**
- * Safely retrieves environment variables for Firebase configuration.
- */
-const getFirebaseEnv = (key: string): string => {
-  try {
-    // Attempt Vite-style access
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      // @ts-ignore
-      const val = import.meta.env[key];
-      if (val) return val;
-    }
-    // Fallback to process.env
-    if (typeof process !== 'undefined' && process.env) {
-      return (process.env as any)[key] || '';
-    }
-  } catch (e) {}
-  return '';
+const getEnv = (key: string): string => {
+  // @ts-ignore
+  return (typeof import.meta !== 'undefined' && import.meta.env?.[key]) || (process.env?.[key]) || '';
 };
 
 const firebaseConfig = {
-  apiKey: getFirebaseEnv('VITE_FIREBASE_API_KEY'),
-  authDomain: getFirebaseEnv('VITE_FIREBASE_AUTH_DOMAIN'),
-  projectId: getFirebaseEnv('VITE_FIREBASE_PROJECT_ID'),
-  storageBucket: getFirebaseEnv('VITE_FIREBASE_STORAGE_BUCKET'),
-  messagingSenderId: getFirebaseEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-  appId: getFirebaseEnv('VITE_FIREBASE_APP_ID')
+  apiKey: getEnv('VITE_FIREBASE_API_KEY'),
+  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnv('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnv('VITE_FIREBASE_APP_ID')
 };
 
-const isFirebaseConfigValid = !!firebaseConfig.projectId && firebaseConfig.projectId.length > 5;
 let db: any = null;
 let auth: any = null;
 
-if (isFirebaseConfigValid) {
+if (firebaseConfig.projectId && firebaseConfig.projectId.length > 5) {
   try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
   } catch (e) {
-    console.warn("Firebase initialization failed:", e);
+    console.warn("Firebase Init Failed:", e);
   }
 }
 
@@ -56,17 +40,11 @@ const getLocalSessions = (): PartnershipSession[] => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 };
 
 const saveLocalSessions = (sessions: PartnershipSession[]) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-  } catch (e) {
-    console.error("Local storage save failed:", e);
-  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 };
 
 export const dbService = {
@@ -89,9 +67,7 @@ export const dbService = {
         const querySnapshot = await getDocs(q);
         const sessions = querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
         if (sessions.length > 0) { saveLocalSessions(sessions); return sessions; }
-      } catch (e) {
-        console.error("Firestore fetch failed, falling back to local storage", e);
-      }
+      } catch {}
     }
     return getLocalSessions();
   },
@@ -103,7 +79,7 @@ export const dbService = {
       saveLocalSessions(sessions);
       callback(sessions);
     }, (err) => {
-      console.error("Snapshot failed, using local", err);
+      console.warn("Snapshot Error:", err);
       callback(getLocalSessions());
     });
   },

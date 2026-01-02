@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PartnershipSession, ParticipantResponse, Question } from './types';
 import { dbService } from './services/dbService';
 import AdminDashboard from './components/AdminDashboard';
 import SurveyView from './components/SurveyView';
 import ResultsView from './components/ResultsView';
+import { ShieldCheck } from 'lucide-react';
 
 type ViewState = {
   main: 'admin' | 'survey';
@@ -21,40 +22,24 @@ const App: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync data from cloud
   useEffect(() => {
     let unsubscribe = () => {};
     
     const setupSync = async () => {
-      setIsLoading(true);
       const params = new URLSearchParams(window.location.search);
       const sid = params.get('sid');
       
-      // Safety timeout: if cloud fetch takes more than 5s, continue anyway
-      const timeout = setTimeout(() => {
-        if (isLoading) setIsLoading(false);
-      }, 5000);
-
       try {
-        // Listen to Firebase
-        unsubscribe = dbService.subscribeToSessions((updatedSessions) => {
-          setSessions(updatedSessions);
+        unsubscribe = dbService.subscribeToSessions((updated) => {
+          setSessions(updated);
           setIsLoading(false);
-          clearTimeout(timeout);
         });
-
-        // Initial fetch
-        const initial = await dbService.getSessions();
-        if (initial) setSessions(initial);
 
         if (sid) {
           setView(prev => ({ ...prev, main: 'survey', selectedId: sid }));
         }
       } catch (err) {
-        console.error("Sync setup failed", err);
-      } finally {
         setIsLoading(false);
-        clearTimeout(timeout);
       }
     };
 
@@ -82,7 +67,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteSession = async (id: string) => {
-    if (window.confirm('האם אתה בטוח שברצונך למחוק ממשק זה?')) {
+    if (window.confirm('Are you sure you want to delete this interface?')) {
       await dbService.deleteSession(id);
     }
   };
@@ -108,12 +93,15 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-6">
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-8">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-indigo-500/20 rounded-full"></div>
-          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          <div className="w-24 h-24 border-[6px] border-indigo-500/10 rounded-full"></div>
+          <div className="w-24 h-24 border-[6px] border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+             <ShieldCheck className="text-indigo-500" size={32} />
+          </div>
         </div>
-        <p className="text-zinc-500 font-bold animate-pulse tracking-widest text-[10px] uppercase">Initiating SynergyBridge...</p>
+        <p className="text-zinc-500 font-black animate-pulse tracking-[0.5em] text-[10px] uppercase pr-2">Initializing SynergyBridge</p>
       </div>
     );
   }
@@ -124,34 +112,34 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30 font-assistant">
-      <nav className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4 cursor-pointer group" onClick={goToAdmin}>
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center font-black text-white shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform">SB</div>
-            <div>
-               <h1 className="text-xl font-black tracking-tight leading-none">Synergy<span className="text-indigo-500">Bridge</span></h1>
-               <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Partnership Intelligence</span>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-assistant">
+      <nav className="border-b border-zinc-900 bg-zinc-950/90 backdrop-blur-2xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between flex-row-reverse">
+          <div className="flex items-center gap-5 cursor-pointer group" onClick={goToAdmin}>
+            <div className="text-right">
+               <h1 className="text-2xl font-black tracking-tight leading-none">Synergy<span className="text-indigo-500">Bridge</span></h1>
+               <span className="text-[9px] text-zinc-500 font-black uppercase tracking-[0.4em]">Partnership Intelligence</span>
             </div>
+            <div className="w-12 h-12 bg-indigo-600 rounded-[1.2rem] flex items-center justify-center font-black text-white shadow-2xl shadow-indigo-600/30 group-hover:rotate-12 transition-transform">SB</div>
           </div>
           <div className="flex gap-4">
             <button 
-              onClick={goToAdmin}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${view.adminTab === 'list' ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
+              onClick={() => openSettings()}
+              className="bg-indigo-600/10 text-indigo-400 px-6 py-3 rounded-2xl text-xs font-black hover:bg-indigo-600 hover:text-white transition-all uppercase tracking-widest"
             >
-              ממשקים
+              + New Interface
             </button>
             <button 
-              onClick={() => openSettings()}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${view.adminTab === 'settings' && !view.selectedId ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-white'}`}
+              onClick={goToAdmin}
+              className={`px-6 py-3 rounded-2xl text-xs font-black transition-all uppercase tracking-widest ${view.adminTab === 'list' ? 'text-zinc-100 bg-zinc-800' : 'text-zinc-500 hover:text-white'}`}
             >
-              + חדש
+              Interfaces
             </button>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-6 md:p-10">
+      <main className="max-w-7xl mx-auto p-8 md:p-12">
         {view.adminTab === 'list' && (
           <AdminDashboard 
             sessions={sessions} 
