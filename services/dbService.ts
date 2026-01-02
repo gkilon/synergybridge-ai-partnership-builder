@@ -18,7 +18,7 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User,
 
 const STORAGE_KEY = 'synergy_db_v3';
 
-// Reverting to import.meta.env for Firebase as it is standard for Vite/Netlify environments
+// Helper for Firebase environment variables (standard for Vite/Netlify)
 const getEnv = (key: string): string => {
   try {
     // @ts-ignore
