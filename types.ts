@@ -4,17 +4,19 @@ export enum Category {
   RELATIONAL = 'relational'
 }
 
+export type Language = 'he' | 'en';
+
 export interface Question {
   id: string;
   category: Category;
   text: string;
-  shortLabel?: string; // מילה מרכזית לתצוגה בגרפים
+  shortLabel?: string;
 }
 
 export interface ParticipantResponse {
   id: string;
   participantName: string;
-  side: string; // The specific side/department the person represents
+  side: string;
   role: string;
   scores: Record<string, number>;
   comments: string;
@@ -25,12 +27,13 @@ export interface PartnershipSession {
   id: string;
   title: string;
   description: string;
-  context?: string; // Dependency relations / Process context
+  context?: string;
   sides: string[];
   questions: Question[]; 
   responses: ParticipantResponse[];
   analysis?: AIAnalysis;
   createdAt: string;
+  language?: Language;
 }
 
 export interface AIAnalysis {
