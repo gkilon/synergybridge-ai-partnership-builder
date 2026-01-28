@@ -1,14 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
-const getAI = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY || '';
-  if (!apiKey) throw new Error("מפתח ה-API חסר במערכת. אנא וודא שההגדרות תקינות.");
-  return new GoogleGenAI({ apiKey });
-};
+/**
+ * Senior Engineer Fix:
+ * 1. Strictly follow the @google/genai initialization guideline: 
+ *    `const ai = new GoogleGenAI({apiKey: process.env.API_KEY});`.
+ * 2. Removed `import.meta.env` which was causing TypeScript errors.
+ * 3. Initializing the client inside the functions as recommended for up-to-date key access.
+ */
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  const ai = getAI();
+  // Initialize AI client using process.env.API_KEY directly.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
     Role: Senior Management Consultant specialized in organizational interfaces.
@@ -63,6 +66,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
       }
     });
 
+    // Access the .text property directly from the response.
     return JSON.parse(response.text?.trim() || "{}");
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
@@ -71,7 +75,8 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  const ai = getAI();
+  // Initialize AI client using process.env.API_KEY directly.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Convert this high-level recommendation into 4-5 concrete operational steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
@@ -86,6 +91,7 @@ export const expandRecommendation = async (recommendation: string, context: stri
         }
       }
     });
+    // Access the .text property directly from the response.
     return JSON.parse(response.text?.trim() || "[]");
   } catch (error) {
     console.error("Gemini Expansion Error:", error);

@@ -5,7 +5,7 @@ import { dbService } from './services/dbService';
 import AdminDashboard from './components/AdminDashboard';
 import SurveyView from './components/SurveyView';
 import ResultsView from './components/ResultsView';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Plus } from 'lucide-react';
 
 type ViewState = {
   main: 'admin' | 'survey';
@@ -39,6 +39,7 @@ const App: React.FC = () => {
           setView(prev => ({ ...prev, main: 'survey', selectedId: sid }));
         }
       } catch (err) {
+        console.error("Subscription error:", err);
         setIsLoading(false);
       }
     };
@@ -58,17 +59,27 @@ const App: React.FC = () => {
       responses: [],
       createdAt: new Date().toISOString()
     };
+    
+    // Save locally first to be responsive, cloud happens in background via service
     await dbService.saveSession(newSession);
+    
+    // Update local state immediately to avoid waiting for sync
+    setSessions(prev => [newSession, ...prev]);
+    
+    // Switch view
     setView({ main: 'admin', adminTab: 'list', selectedId: null });
   };
 
   const handleUpdateSession = async (updated: PartnershipSession) => {
     await dbService.saveSession(updated);
+    // Local state will be updated by subscription, but we can do it manually too
+    setSessions(prev => prev.map(s => s.id === updated.id ? updated : s));
   };
 
   const handleDeleteSession = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this interface?')) {
+    if (window.confirm('האם אתה בטוח שברצונך למחוק את הממשק הזה? כל הנתונים והתובנות יימחקו לצמיתות.')) {
       await dbService.deleteSession(id);
+      setSessions(prev => prev.filter(s => s.id !== id));
     }
   };
 
@@ -101,7 +112,10 @@ const App: React.FC = () => {
              <ShieldCheck className="text-indigo-500" size={32} />
           </div>
         </div>
-        <p className="text-zinc-500 font-black animate-pulse tracking-[0.5em] text-[10px] uppercase pr-2">Initializing SynergyBridge</p>
+        <div className="text-center space-y-2">
+          <p className="text-zinc-500 font-black animate-pulse tracking-[0.5em] text-[10px] uppercase pr-2">Initializing SynergyBridge</p>
+          <p className="text-zinc-700 text-[8px] font-black uppercase tracking-widest">Connecting Secure Core...</p>
+        </div>
       </div>
     );
   }
@@ -125,9 +139,10 @@ const App: React.FC = () => {
           <div className="flex gap-4">
             <button 
               onClick={() => openSettings()}
-              className="bg-indigo-600/10 text-indigo-400 px-6 py-3 rounded-2xl text-xs font-black hover:bg-indigo-600 hover:text-white transition-all uppercase tracking-widest"
+              className="bg-indigo-600 text-white px-8 py-3 rounded-2xl text-xs font-black hover:bg-indigo-500 transition-all uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-indigo-600/20"
             >
-              + New Interface
+              <Plus size={14} />
+              New Interface
             </button>
             <button 
               onClick={goToAdmin}
