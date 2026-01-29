@@ -1,4 +1,4 @@
-הimport { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
 /**
@@ -23,7 +23,6 @@ const DEFAULT_ANALYSIS: AIAnalysis = {
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  // 🔍 DEBUG - בדיקת API Key
   console.log('=== GEMINI API DEBUG ===');
   console.log('1. import.meta.env:', import.meta.env);
   console.log('2. VITE_GEMINI_API_KEY exists:', !!import.meta.env.VITE_GEMINI_API_KEY);
