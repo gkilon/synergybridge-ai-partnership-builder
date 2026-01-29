@@ -1,10 +1,12 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+
+import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
 /**
- * מנקה את התגובה במקרה שגוגל מחזירה Markdown JSON
+ * Robustly cleans a string that might contain markdown JSON code blocks.
  */
 const cleanJSONResponse = (text: string): string => {
+  if (!text) return "";
   let cleaned = text.trim();
   if (cleaned.startsWith("```")) {
     const match = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
@@ -23,24 +25,9 @@ const DEFAULT_ANALYSIS: AIAnalysis = {
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  // Always use process.env.API_KEY as per global strict requirements.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  if (!apiKey) {
-    console.error('❌ API Key is MISSING!');
-    return DEFAULT_ANALYSIS;
-  }
-
-  // אתחול ה-SDK הרשמי
-  const genAI = new GoogleGenerativeAI(apiKey);
-  
-  // הגדרת המודל עם Schema קשיח (כדי שיחזור JSON תקין תמיד)
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    generationConfig: {
-      responseMimeType: "application/json",
-    }
-  });
-
   const prompt = `
     Role: Senior Management Consultant specialized in organizational interfaces.
     Mission: Provide a sharp, data-driven diagnosis of a work partnership interface.
@@ -48,60 +35,89 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     Raw Data:
     - Interface Health Score (Outcome): ${aggregatedData.satisfactionScore}%
     - Drivers performance: ${JSON.stringify(aggregatedData.driverData)}
-    - Biggest Perception Gap: ${aggregatedData.biggestGap ? \`\${aggregatedData.biggestGap.label} (Gap of \${aggregatedData.biggestGap.value} points)\` : 'High alignment'}
+    - Biggest Perception Gap: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (Gap of ${aggregatedData.biggestGap.value} points)` : 'High alignment'}
     
     Output Language: Hebrew (עברית).
-    Return ONLY a JSON object with this structure:
-    {
-      "summary": "string",
-      "recommendations": { "systemic": ["string"], "relational": ["string"] },
-      "strengths": { "systemic": ["string"], "relational": ["string"] },
-      "weaknesses": { "systemic": ["string"], "relational": ["string"] }
-    }
+    Constraints: Return ONLY a JSON object. No conversational filler.
   `;
 
   try {
-    console.log('📡 Calling Gemini API (v1.5 Flash)...');
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        // To disable thinking and get faster results, set budget to 0 and provide maxOutputTokens.
+        maxOutputTokens: 2000,
+        thinkingConfig: { thinkingBudget: 0 },
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING },
+            recommendations: {
+              type: Type.OBJECT,
+              properties: {
+                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
+                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ['systemic', 'relational']
+            },
+            strengths: {
+              type: Type.OBJECT,
+              properties: {
+                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
+                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ['systemic', 'relational']
+            },
+            weaknesses: {
+              type: Type.OBJECT,
+              properties: {
+                systemic: { type: Type.ARRAY, items: { type: Type.STRING } },
+                relational: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ['systemic', 'relational']
+            }
+          },
+          required: ['summary', 'recommendations', 'strengths', 'weaknesses']
+        }
+      }
+    });
 
-    console.log('✅ API Response received');
-    
+    const text = response.text;
     if (!text) return DEFAULT_ANALYSIS;
     
-    return JSON.parse(cleanJSONResponse(text));
+    try {
+      return JSON.parse(cleanJSONResponse(text));
+    } catch (parseError) {
+      console.error("JSON Parse Error:", parseError, text);
+      return DEFAULT_ANALYSIS;
+    }
   } catch (error) {
-    console.error("❌ Gemini API Error:", error);
-    // במקרה של שגיאה במודל, נחזיר את ברירת המחדל כדי שהאפליקציה לא תקרוס
-    return DEFAULT_ANALYSIS;
+    console.error("Gemini API Error:", error);
+    throw error;
   }
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  
-  if (!apiKey) {
-    console.error('❌ API Key missing');
-    return ["בדוק את שלבי הביצוע"];
-  }
-  
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash",
-    generationConfig: { responseMimeType: "application/json" }
-  });
-
-  const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "\${recommendation}". Context: "\${context}". Return a JSON array of strings.`;
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 1000,
+        thinkingConfig: { thinkingBudget: 0 },
+        responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
+      }
+    });
+    const text = response.text;
+    if (!text) return ["בדוק את שלבי הביצוע"];
     return JSON.parse(cleanJSONResponse(text));
   } catch (error) {
-    console.error('❌ expandRecommendation error:', error);
     return ["קבע פגישה", "הגדר יעדים", "תעד הסכמות"];
   }
 };
