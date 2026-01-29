@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
@@ -24,8 +23,8 @@ const DEFAULT_ANALYSIS: AIAnalysis = {
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  // Senior Engineer Fix: Exclusively use process.env.API_KEY to initialize GoogleGenAI
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Fix: Use import.meta.env for Vite environment variables
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
   
   const prompt = `
     Role: Senior Management Consultant specialized in organizational interfaces.
@@ -96,8 +95,8 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  // Senior Engineer Fix: Exclusively use process.env.API_KEY to initialize GoogleGenAI
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Fix: Use import.meta.env for Vite environment variables
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
   const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
