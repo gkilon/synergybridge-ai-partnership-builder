@@ -5,7 +5,7 @@ import { dbService } from './services/dbService';
 import AdminDashboard from './components/AdminDashboard';
 import SurveyView from './components/SurveyView';
 import ResultsView from './components/ResultsView';
-import { ShieldCheck, Plus, LayoutDashboard, Settings, Home } from 'lucide-react';
+import { ShieldCheck, Plus, LayoutDashboard, Settings, Home, ArrowLeft } from 'lucide-react';
 
 type ViewState = {
   main: 'admin' | 'survey' | 'landing';
@@ -28,12 +28,11 @@ const App: React.FC = () => {
     if (sid) {
       setView({ main: 'survey', adminTab: 'list', selectedId: sid });
     } else {
-      // Keep existing main view unless it's survey without SID
-      setView(prev => ({ 
-        main: prev.main === 'survey' ? 'landing' : prev.main, 
-        adminTab: prev.adminTab,
-        selectedId: null
-      }));
+      // Logic to prevent reset if we are already in admin mode
+      setView(prev => {
+        if (prev.main === 'admin') return prev;
+        return { main: 'landing', adminTab: 'list', selectedId: null };
+      });
     }
   }, []);
 
@@ -110,6 +109,14 @@ const App: React.FC = () => {
   if (view.main === 'landing') {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center" dir="rtl">
+        {/* Transparent Admin Portal Link */}
+        <button 
+          onClick={goToAdmin}
+          className="fixed top-6 left-6 text-zinc-700 hover:text-indigo-500 transition-colors flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
+        >
+          <Settings size={14} /> Admin Access
+        </button>
+
         <div className="max-w-3xl space-y-12 animate-fadeIn">
           <div className="space-y-4">
             <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center font-black text-4xl mx-auto shadow-2xl shadow-indigo-600/30">SB</div>
@@ -126,9 +133,9 @@ const App: React.FC = () => {
             </button>
             <button 
               onClick={goToAdmin}
-              className="bg-white text-black px-12 py-6 rounded-3xl font-black text-xl hover:bg-zinc-200 transition-all flex items-center gap-3 justify-center shadow-xl"
+              className="bg-zinc-800 text-white px-12 py-6 rounded-3xl font-black text-xl hover:bg-zinc-700 transition-all flex items-center gap-3 justify-center border border-zinc-700 shadow-xl"
             >
-              ניהול מערכת (אדמין) <LayoutDashboard size={20} />
+              ניהול שותפויות <LayoutDashboard size={20} />
             </button>
           </div>
           
@@ -136,13 +143,13 @@ const App: React.FC = () => {
             <div className="pt-12 border-t border-zinc-900">
                <p className="text-zinc-600 font-black text-[10px] uppercase tracking-widest mb-6">ממשקים קיימים במערכת</p>
                <div className="flex flex-wrap justify-center gap-3">
-                  {sessions.slice(0, 3).map(s => (
+                  {sessions.slice(0, 5).map(s => (
                     <button 
                       key={s.id} 
                       onClick={() => setView({ main: 'admin', adminTab: 'results', selectedId: s.id })}
                       className="bg-zinc-900/50 border border-zinc-800 px-6 py-3 rounded-2xl text-sm font-bold text-zinc-400 hover:text-white hover:border-indigo-500 transition-all"
                     >
-                      {s.title} (צפה בנתונים)
+                      {s.title} (נתונים)
                     </button>
                   ))}
                </div>
@@ -170,11 +177,11 @@ const App: React.FC = () => {
               className={`px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 ${view.adminTab === 'list' ? 'text-white bg-zinc-800 border border-zinc-700' : 'text-zinc-500 hover:text-white bg-transparent hover:bg-zinc-900'}`}
             >
               <LayoutDashboard size={14} />
-              <span>ניהול שותפויות</span>
+              <span>כל השותפויות</span>
             </button>
             <button 
               onClick={goToLanding} 
-              className={`px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 text-zinc-500 hover:text-white bg-transparent hover:bg-zinc-900`}
+              className="px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 text-zinc-500 hover:text-white bg-transparent hover:bg-zinc-900"
             >
               <Home size={14} />
               <span>בית</span>

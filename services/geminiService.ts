@@ -25,14 +25,14 @@ const DEFAULT_ANALYSIS: AIAnalysis = {
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  // Use process.env.API_KEY exclusively as per guidelines
+  // Use process.env.API_KEY exclusively as per global instructions.
+  // The bridge is now handled in index.tsx
   const apiKey = process.env.API_KEY || "";
   if (!apiKey) {
-    throw new Error("Missing API Key. Ensure VITE_GEMINI_API_KEY is set in Netlify.");
+    throw new Error("מפתח API חסר. נא לוודא הגדרת VITE_GEMINI_API_KEY בסביבה.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-
+  const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
     Role: Senior Management Consultant specialized in organizational interfaces.
@@ -49,10 +49,11 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview', // Switched to flash for speed
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 0 }, // DISABLE THINKING TO PREVENT HANGS
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -91,8 +92,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     if (!text) return DEFAULT_ANALYSIS;
     
     try {
-      const parsed = JSON.parse(cleanJSONResponse(text));
-      return parsed;
+      return JSON.parse(cleanJSONResponse(text));
     } catch (parseError) {
       console.error("JSON Parse Error:", parseError, text);
       return DEFAULT_ANALYSIS;
@@ -105,7 +105,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
   const apiKey = process.env.API_KEY || "";
- const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
@@ -114,8 +114,8 @@ export const expandRecommendation = async (recommendation: string, context: stri
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } },
-        thinkingConfig: { thinkingBudget: 0 } // Disable thinking for faster simple tasks
+        thinkingConfig: { thinkingBudget: 0 }, // NO THINKING
+        responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
       }
     });
     const text = response.text;
