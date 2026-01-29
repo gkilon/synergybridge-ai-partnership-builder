@@ -31,7 +31,8 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     throw new Error("Missing API Key. Ensure VITE_GEMINI_API_KEY is set in Netlify.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+
   
   const prompt = `
     Role: Senior Management Consultant specialized in organizational interfaces.
