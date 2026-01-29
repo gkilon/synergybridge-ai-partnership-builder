@@ -25,14 +25,8 @@ const DEFAULT_ANALYSIS: AIAnalysis = {
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  // Use process.env.API_KEY exclusively as per global instructions.
-  // The bridge is now handled in index.tsx
-  const apiKey = process.env.API_KEY || "";
-  if (!apiKey) {
-    throw new Error("מפתח API חסר. נא לוודא הגדרת VITE_GEMINI_API_KEY בסביבה.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  // Always use process.env.API_KEY as per global strict requirements.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
     Role: Senior Management Consultant specialized in organizational interfaces.
@@ -49,11 +43,13 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', // Switched to flash for speed
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 0 }, // DISABLE THINKING TO PREVENT HANGS
+        // To disable thinking and get faster results, set budget to 0 and provide maxOutputTokens.
+        maxOutputTokens: 2000,
+        thinkingConfig: { thinkingBudget: 0 },
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -104,8 +100,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  const apiKey = process.env.API_KEY || "";
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
@@ -114,7 +109,8 @@ export const expandRecommendation = async (recommendation: string, context: stri
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 0 }, // NO THINKING
+        maxOutputTokens: 1000,
+        thinkingConfig: { thinkingBudget: 0 },
         responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
       }
     });
