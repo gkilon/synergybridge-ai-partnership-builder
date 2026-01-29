@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
@@ -6,7 +5,6 @@ import { PartnershipSession, AIAnalysis } from "../types";
  * Robustly cleans a string that might contain markdown JSON code blocks.
  */
 const cleanJSONResponse = (text: string): string => {
-  if (!text) return "";
   let cleaned = text.trim();
   if (cleaned.startsWith("```")) {
     const match = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
@@ -25,8 +23,22 @@ const DEFAULT_ANALYSIS: AIAnalysis = {
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  // Always use process.env.API_KEY as per global strict requirements.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // 🔍 DEBUG - בדיקת API Key
+  console.log('=== GEMINI API DEBUG ===');
+  console.log('1. import.meta.env:', import.meta.env);
+  console.log('2. VITE_GEMINI_API_KEY exists:', !!import.meta.env.VITE_GEMINI_API_KEY);
+  console.log('3. API Key length:', import.meta.env.VITE_GEMINI_API_KEY?.length);
+  console.log('4. First 10 chars:', import.meta.env.VITE_GEMINI_API_KEY?.substring(0, 10));
+  
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    console.error('❌ API Key is MISSING!');
+    return DEFAULT_ANALYSIS;
+  }
+  
+  console.log('✅ Initializing GoogleGenAI with key...');
+  const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `
     Role: Senior Management Consultant specialized in organizational interfaces.
@@ -42,14 +54,12 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
   `;
 
   try {
+    console.log('📡 Calling Gemini API...');
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-pro',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        // To disable thinking and get faster results, set budget to 0 and provide maxOutputTokens.
-        maxOutputTokens: 2000,
-        thinkingConfig: { thinkingBudget: 0 },
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -84,6 +94,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
       }
     });
 
+    console.log('✅ API Response received');
     const text = response.text;
     if (!text) return DEFAULT_ANALYSIS;
     
@@ -94,23 +105,28 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
       return DEFAULT_ANALYSIS;
     }
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("❌ Gemini API Error:", error);
     throw error;
   }
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    console.error('❌ API Key missing in expandRecommendation');
+    return ["בדוק את שלבי הביצוע"];
+  }
+  
+  const ai = new GoogleGenAI({ apiKey });
   const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        maxOutputTokens: 1000,
-        thinkingConfig: { thinkingBudget: 0 },
         responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
       }
     });
@@ -118,6 +134,7 @@ export const expandRecommendation = async (recommendation: string, context: stri
     if (!text) return ["בדוק את שלבי הביצוע"];
     return JSON.parse(cleanJSONResponse(text));
   } catch (error) {
+    console.error('❌ expandRecommendation error:', error);
     return ["קבע פגישה", "הגדר יעדים", "תעד הסכמות"];
   }
 };
