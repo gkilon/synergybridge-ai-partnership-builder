@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+הimport { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
 /**
@@ -56,7 +56,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
   try {
     console.log('📡 Calling Gemini API...');
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-pro',
+      model: 'gemini-2.0-flash-exp',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -123,7 +123,7 @@ export const expandRecommendation = async (recommendation: string, context: stri
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash-exp',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
