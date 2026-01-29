@@ -105,7 +105,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
   const apiKey = process.env.API_KEY || "";
-  const ai = new GoogleGenAI({ apiKey });
+ const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
   const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
