@@ -55,7 +55,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
   try {
     console.log('📡 Calling Gemini API...');
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -122,7 +122,7 @@ export const expandRecommendation = async (recommendation: string, context: stri
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-pro',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
