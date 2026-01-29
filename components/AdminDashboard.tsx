@@ -4,7 +4,7 @@ import { PartnershipSession, Question, Category, Language } from '../types';
 import { DEFAULT_QUESTIONS } from '../constants';
 import { dbService } from '../services/dbService';
 import { User } from 'firebase/auth';
-import { Save, Plus, X, Trash2, LogOut, Settings2, LayoutDashboard } from 'lucide-react';
+import { Save, Plus, X, Trash2, LogOut, Settings2, LayoutDashboard, KeyRound, AlertCircle } from 'lucide-react';
 
 interface Props {
   sessions: PartnershipSession[];
@@ -35,7 +35,6 @@ const AdminDashboard: React.FC<Props> = ({
   const [newLang, setNewLang] = useState<Language>('he');
   const [editingQuestions, setEditingQuestions] = useState<Question[]>([]);
 
-  // Initialize state and check for existing security gate pass
   useEffect(() => {
     const passed = sessionStorage.getItem('sb_security_gate') === 'true';
     if (passed) setGatePassed(true);
@@ -65,7 +64,6 @@ const AdminDashboard: React.FC<Props> = ({
     return () => unsubscribe();
   }, [initialEditingId, sessions]);
 
-  // Handle saving session (Add or Update)
   const handleSave = async () => {
     if (!newTitle.trim() || !newSides.trim()) {
       alert("נא להזין כותרת ולפחות שני צדדים לשותפות");
@@ -110,16 +108,22 @@ const AdminDashboard: React.FC<Props> = ({
     </div>
   );
 
-  // Security Gate Component
   if (!gatePassed) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 animate-fadeIn">
-        <div className="glass max-w-md w-full p-12 rounded-[3rem] text-center space-y-10 shadow-2xl border-white/5 relative overflow-hidden">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 animate-fadeIn" dir="rtl">
+        <div className="glass max-w-md w-full p-12 rounded-[3.5rem] text-center space-y-10 shadow-2xl border-white/5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent"></div>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-black text-white">כניסת מנהל בלבד</h2>
-            <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">Administrator Authorization</p>
+          
+          <div className="space-y-4">
+            <div className="w-16 h-16 bg-indigo-600/10 rounded-2xl flex items-center justify-center mx-auto text-indigo-500">
+               <KeyRound size={32} />
+            </div>
+            <div className="space-y-1">
+               <h2 className="text-3xl font-black text-white">כניסת מנהל</h2>
+               <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Restricted Access Area</p>
+            </div>
           </div>
+
           <form onSubmit={(e) => {
             e.preventDefault();
             if (passwordInput === 'giladk25') {
@@ -127,18 +131,31 @@ const AdminDashboard: React.FC<Props> = ({
               sessionStorage.setItem('sb_security_gate', 'true');
             } else {
               setError(true);
+              setPasswordInput('');
             }
-          }}>
-            <input 
-              type="password" 
-              placeholder="Password" 
-              className={`w-full bg-zinc-900 border-2 rounded-2xl p-4 text-white font-bold text-center transition-all outline-none ${error ? 'border-rose-500 animate-pulse' : 'border-zinc-800 focus:border-indigo-500'}`}
-              value={passwordInput}
-              onChange={(e) => { setPasswordInput(e.target.value); setError(false); }}
-            />
-            {error && <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mt-4">Incorrect Password</p>}
-            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black text-lg transition-all shadow-xl shadow-indigo-600/20 mt-8">Authorize Access</button>
+          }} className="space-y-6">
+            <div className="space-y-2">
+               <input 
+                 type="password" 
+                 placeholder="הזן קוד גישה..." 
+                 className={`w-full bg-zinc-950 border-2 rounded-2xl p-5 text-white font-black text-center text-2xl tracking-widest transition-all outline-none ${error ? 'border-rose-500 bg-rose-500/5' : 'border-zinc-800 focus:border-indigo-500'}`}
+                 value={passwordInput}
+                 onChange={(e) => { setPasswordInput(e.target.value); setError(false); }}
+                 autoFocus
+               />
+               {error && (
+                 <div className="flex items-center justify-center gap-2 text-rose-500 animate-fadeIn">
+                    <AlertCircle size={14} />
+                    <span className="text-[10px] font-black uppercase">קוד שגוי - נסה שוב</span>
+                 </div>
+               )}
+            </div>
+            <button type="submit" className="w-full bg-white text-black py-5 rounded-2xl font-black text-lg transition-all shadow-xl hover:bg-zinc-200 active:scale-95">
+              אימות וכניסה
+            </button>
           </form>
+          
+          <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest pt-4">© SynergyBridge Security Core</p>
         </div>
       </div>
     );
@@ -147,9 +164,8 @@ const AdminDashboard: React.FC<Props> = ({
   const showEditor = forceShowAdd || initialEditingId;
 
   return (
-    <div className="space-y-12 animate-fadeIn">
+    <div className="space-y-12 animate-fadeIn" dir="rtl">
       {showEditor ? (
-        // Session Editor View
         <div className="glass rounded-[3rem] p-12 border-white/5 shadow-2xl space-y-12">
           <div className="flex justify-between items-center border-b border-zinc-900 pb-8">
             <div className="text-right">
@@ -184,7 +200,7 @@ const AdminDashboard: React.FC<Props> = ({
               <div className="space-y-4">
                 <label className="text-xs font-black text-zinc-500 uppercase tracking-widest block text-right">שפת השאלון</label>
                 <select 
-                  className="w-full bg-zinc-900 border-2 border-zinc-800 rounded-2xl p-5 text-white font-bold text-right"
+                  className="w-full bg-zinc-900 border-2 border-zinc-800 rounded-2xl p-5 text-white font-bold text-right appearance-none"
                   value={newLang}
                   onChange={e => setNewLang(e.target.value as Language)}
                 >
@@ -216,18 +232,17 @@ const AdminDashboard: React.FC<Props> = ({
           </button>
         </div>
       ) : (
-        // Sessions List View
         <div className="space-y-8">
           <div className="flex justify-between items-center mb-12">
             <div className="flex gap-4">
               {user && (
-                <button onClick={() => dbService.logout()} className="flex items-center gap-2 text-zinc-500 hover:text-white font-black text-[10px] uppercase tracking-widest bg-zinc-900 px-6 py-3 rounded-xl">
+                <button onClick={() => { sessionStorage.removeItem('sb_security_gate'); dbService.logout(); }} className="flex items-center gap-2 text-zinc-500 hover:text-rose-500 font-black text-[10px] uppercase tracking-widest bg-zinc-900 px-6 py-3 rounded-xl transition-colors">
                   <LogOut size={14} /> Log Out
                 </button>
               )}
             </div>
             <div className="text-right">
-              <h2 className="text-4xl font-black text-white">ממשקים פעילים</h2>
+              <h2 className="text-4xl font-black text-white">ניהול ממשקים</h2>
               <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-1">Active Partnership Ecosystem</p>
             </div>
           </div>

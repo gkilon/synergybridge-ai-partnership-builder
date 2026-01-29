@@ -8,7 +8,6 @@ import { PartnershipSession, AIAnalysis } from "../types";
 const cleanJSONResponse = (text: string): string => {
   let cleaned = text.trim();
   if (cleaned.startsWith("```")) {
-    // Regex to match markdown code blocks and extract the content
     const match = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
     if (match && match[1]) {
       cleaned = match[1].trim();
@@ -17,8 +16,14 @@ const cleanJSONResponse = (text: string): string => {
   return cleaned;
 };
 
+const DEFAULT_ANALYSIS: AIAnalysis = {
+  summary: "לא ניתן היה להפיק ניתוח מלא ברגע זה. מומלץ לבדוק את נתוני המענים ולנסות שוב.",
+  recommendations: { systemic: ["בדוק הגדרות ממשק"], relational: ["קיים פגישת סנכרון"] },
+  strengths: { systemic: [], relational: [] },
+  weaknesses: { systemic: [], relational: [] }
+};
+
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  // Initialize AI client using process.env.API_KEY directly.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
@@ -27,11 +32,11 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
     Context: ${session.context || session.title || 'General organizational interface'}
     Raw Data:
     - Interface Health Score (Outcome): ${aggregatedData.satisfactionScore}%
-    - Drivers performance (Systemic vs Relational): ${JSON.stringify(aggregatedData.driverData)}
-    - Biggest Perception Gap: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (Gap of ${aggregatedData.biggestGap.value} points)` : 'High alignment between sides'}
+    - Drivers performance: ${JSON.stringify(aggregatedData.driverData)}
+    - Biggest Perception Gap: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (Gap of ${aggregatedData.biggestGap.value} points)` : 'High alignment'}
     
     Output Language: Hebrew (עברית).
-    Constraints: Return ONLY a JSON object matching the requested schema. No conversational filler.
+    Constraints: Return ONLY a JSON object. No conversational filler.
   `;
 
   try {
@@ -43,7 +48,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            summary: { type: Type.STRING, description: 'Diagnosis of the situation in 3 punchy sentences.' },
+            summary: { type: Type.STRING },
             recommendations: {
               type: Type.OBJECT,
               properties: {
@@ -74,18 +79,24 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
       }
     });
 
-    const text = response.text || "{}";
-    return JSON.parse(cleanJSONResponse(text));
+    const text = response.text;
+    if (!text) return DEFAULT_ANALYSIS;
+    
+    try {
+      return JSON.parse(cleanJSONResponse(text));
+    } catch (parseError) {
+      console.error("JSON Parse Error:", parseError, text);
+      return DEFAULT_ANALYSIS;
+    }
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
+    console.error("Gemini API Error:", error);
     throw error;
   }
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
-  // Initialize AI client using process.env.API_KEY directly.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const prompt = `Convert this high-level recommendation into 4-5 concrete operational steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
+  const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
     const response = await ai.models.generateContent({
@@ -93,16 +104,13 @@ export const expandRecommendation = async (recommendation: string, context: stri
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING }
-        }
+        responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
       }
     });
-    const text = response.text || "[]";
+    const text = response.text;
+    if (!text) return ["בדוק את שלבי הביצוע"];
     return JSON.parse(cleanJSONResponse(text));
   } catch (error) {
-    console.error("Gemini Expansion Error:", error);
-    return ["קבע פגישת סנכרון", "הגדר יעדים משותפים", "תעד את ההסכמות"];
+    return ["קבע פגישה", "הגדר יעדים", "תעד הסכמות"];
   }
 };

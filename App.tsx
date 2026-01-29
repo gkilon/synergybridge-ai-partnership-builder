@@ -8,7 +8,7 @@ import ResultsView from './components/ResultsView';
 import { ShieldCheck, Plus, LayoutDashboard } from 'lucide-react';
 
 type ViewState = {
-  main: 'admin' | 'survey';
+  main: 'admin' | 'survey' | 'landing';
   adminTab: 'list' | 'settings' | 'results';
   selectedId: string | null;
 };
@@ -16,44 +16,38 @@ type ViewState = {
 const App: React.FC = () => {
   const [sessions, setSessions] = useState<PartnershipSession[]>([]);
   const [view, setView] = useState<ViewState>({
-    main: 'admin',
+    main: 'landing',
     adminTab: 'list',
     selectedId: null
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync state with URL sid parameter
   const syncFromUrl = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
     const sid = params.get('sid');
     if (sid) {
       setView({ main: 'survey', adminTab: 'list', selectedId: sid });
     } else {
-      // If no SID, ensure we are in admin mode, but preserve tab if already there
+      // Keep existing main view unless it's survey without SID
       setView(prev => ({ 
-        main: 'admin', 
-        adminTab: prev.main === 'survey' ? 'list' : prev.adminTab,
-        selectedId: prev.main === 'survey' ? null : prev.selectedId
+        main: prev.main === 'survey' ? 'landing' : prev.main, 
+        adminTab: prev.adminTab,
+        selectedId: null
       }));
     }
   }, []);
 
   useEffect(() => {
-    // Initial sync from URL
     syncFromUrl();
-
-    // Listen for browser back/forward buttons
-    const handlePopState = () => syncFromUrl();
-    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', syncFromUrl);
     
-    // Subscribe to DB updates
     const unsubscribe = dbService.subscribeToSessions((updated) => {
       setSessions(updated);
       setIsLoading(false);
     });
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('popstate', syncFromUrl);
       unsubscribe();
     };
   }, [syncFromUrl]);
@@ -89,16 +83,15 @@ const App: React.FC = () => {
   };
 
   const goToAdmin = () => {
-    // Clean up URL parameters by navigating to the base path
     const url = new URL(window.location.origin + window.location.pathname);
     window.history.pushState({}, '', url.toString());
-    
-    // Reset View State to dashboard list
-    setView({ 
-      main: 'admin', 
-      adminTab: 'list', 
-      selectedId: null 
-    });
+    setView({ main: 'admin', adminTab: 'list', selectedId: null });
+  };
+
+  const goToLanding = () => {
+    const url = new URL(window.location.origin + window.location.pathname);
+    window.history.pushState({}, '', url.toString());
+    setView({ main: 'landing', adminTab: 'list', selectedId: null });
   };
 
   if (isLoading) return (
@@ -108,37 +101,76 @@ const App: React.FC = () => {
     </div>
   );
 
-  // If in survey mode, render SurveyView exclusively
   if (view.main === 'survey' && view.selectedId) {
     const session = sessions.find(s => s.id === view.selectedId);
     return <SurveyView session={session} onSubmit={(res) => submitResponse(view.selectedId!, res)} onGoAdmin={goToAdmin} />;
+  }
+
+  // Landing Page
+  if (view.main === 'landing') {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center" dir="rtl">
+        <div className="max-w-3xl space-y-12 animate-fadeIn">
+          <div className="space-y-4">
+            <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center font-black text-4xl mx-auto shadow-2xl shadow-indigo-600/30">SB</div>
+            <h1 className="text-6xl font-black tracking-tighter">Synergy<span className="text-indigo-500">Bridge</span></h1>
+            <p className="text-zinc-500 text-xl font-medium max-w-xl mx-auto">הכלי החכם לבנייה ואופטימיזציה של ממשקים ארגוניים ושיתופי פעולה אסטרטגיים.</p>
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-6 justify-center">
+            <button 
+              onClick={() => setView({ main: 'admin', adminTab: 'settings', selectedId: null })}
+              className="bg-indigo-600 px-12 py-6 rounded-3xl font-black text-xl hover:bg-indigo-500 transition-all shadow-2xl shadow-indigo-600/20 flex items-center gap-3 justify-center"
+            >
+              הקם ממשק חדש <Plus size={20} />
+            </button>
+            <button 
+              onClick={goToAdmin}
+              className="bg-zinc-900 border border-zinc-800 px-12 py-6 rounded-3xl font-black text-xl hover:bg-zinc-800 transition-all flex items-center gap-3 justify-center"
+            >
+              ניהול מערכת <LayoutDashboard size={20} />
+            </button>
+          </div>
+          
+          {sessions.length > 0 && (
+            <div className="pt-12 border-t border-zinc-900">
+               <p className="text-zinc-600 font-black text-[10px] uppercase tracking-widest mb-6">ממשקים קיימים במערכת</p>
+               <div className="flex flex-wrap justify-center gap-3">
+                  {sessions.slice(0, 3).map(s => (
+                    <div key={s.id} className="bg-zinc-900/50 border border-zinc-800 px-6 py-3 rounded-2xl text-sm font-bold text-zinc-400">
+                      {s.title}
+                    </div>
+                  ))}
+               </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-assistant">
       <nav className="border-b border-zinc-900 bg-zinc-950/90 backdrop-blur-2xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
-          {/* Dashboard and New Interface Buttons - Left side in RTL */}
           <div className="flex gap-4">
             <button 
               onClick={() => setView({ main: 'admin', adminTab: 'settings', selectedId: null })} 
               className={`px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 ${view.adminTab === 'settings' ? 'text-white bg-indigo-600' : 'text-indigo-400 bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white'}`}
             >
               <Plus size={14} /> 
-              <span>New Interface</span>
+              <span>ממשק חדש</span>
             </button>
             <button 
-              id="dashboard-nav-btn"
-              onClick={goToAdmin} 
+              onClick={() => setView({ main: 'admin', adminTab: 'list', selectedId: null })} 
               className={`px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 ${view.adminTab === 'list' ? 'text-white bg-zinc-800 border border-zinc-700' : 'text-zinc-500 hover:text-white bg-transparent hover:bg-zinc-900'}`}
             >
               <LayoutDashboard size={14} />
-              <span>Dashboard</span>
+              <span>ניהול מערכת</span>
             </button>
           </div>
 
-          {/* Logo Area - Right side in RTL */}
-          <div className="flex items-center gap-5 cursor-pointer group" onClick={goToAdmin}>
+          <div className="flex items-center gap-5 cursor-pointer group" onClick={goToLanding}>
             <div className="text-right">
                <h1 className="text-2xl font-black tracking-tight leading-none">Synergy<span className="text-indigo-500">Bridge</span></h1>
                <span className="text-[9px] text-zinc-500 font-black uppercase tracking-[0.4em]">Admin Core</span>
@@ -149,7 +181,6 @@ const App: React.FC = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto p-8 md:p-12">
-        {/* Using keys to force re-mount and clean state when switching tabs */}
         {view.adminTab === 'list' && (
           <AdminDashboard 
             key="dashboard-list"
@@ -168,7 +199,7 @@ const App: React.FC = () => {
             onUpdate={handleUpdateSession} 
             initialEditingId={view.selectedId} 
             forceShowAdd={true} 
-            onCancel={goToAdmin} 
+            onCancel={() => setView({ main: 'admin', adminTab: 'list', selectedId: null })} 
             onDelete={handleDeleteSession} 
           />
         )}
@@ -178,7 +209,7 @@ const App: React.FC = () => {
             key={`dashboard-results-${view.selectedId}`}
             session={sessions.find(s => s.id === view.selectedId)} 
             onUpdate={handleUpdateSession} 
-            onBack={goToAdmin} 
+            onBack={() => setView({ main: 'admin', adminTab: 'list', selectedId: null })} 
           />
         )}
       </main>

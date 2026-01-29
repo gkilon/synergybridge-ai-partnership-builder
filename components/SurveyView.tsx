@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { PartnershipSession, ParticipantResponse, Category, Language } from '../types';
-import { LayoutDashboard, Lock } from 'lucide-react';
+import { LayoutDashboard, Lock, Settings } from 'lucide-react';
 
 interface Props {
   session?: PartnershipSession;
@@ -40,7 +40,7 @@ const SurveyView: React.FC<Props> = ({ session, onSubmit, onGoAdmin }) => {
       success: 'נשלח בהצלחה!',
       successDesc: 'תודה על המענה, המידע שלך יסייע ל-AI.',
       back: 'סגור וחזור',
-      admin: 'כניסת מנהל'
+      admin: 'ניהול מערכת'
     },
     en: {
       identify: 'Identify Participant',
@@ -62,9 +62,10 @@ const SurveyView: React.FC<Props> = ({ session, onSubmit, onGoAdmin }) => {
       back: 'Close and Return',
       admin: 'Admin Login'
     }
-  }[lang];
+  }[lang] || { /* Safe fallback if lang is neither 'he' nor 'en' */
+    identify: 'Identify', chooseSide: 'Side:', personalDetails: 'Details:', fullName: 'Name', role: 'Role', start: 'Start', question: 'Q', of: 'of', weak: 'Weak', excellent: 'Excellent', further: 'More?', furtherDesc: 'Notes', notes: '...', finish: 'Finish', success: 'Done', successDesc: '...', back: 'Back', admin: 'Admin'
+  };
 
-  // Fix: Implemented missing handleFinalSubmit to process survey data and trigger submission
   const handleFinalSubmit = () => {
     const newResponse: ParticipantResponse = {
       id: Math.random().toString(36).substr(2, 9),
@@ -103,13 +104,14 @@ const SurveyView: React.FC<Props> = ({ session, onSubmit, onGoAdmin }) => {
   return (
     <div className={`min-h-screen bg-zinc-950 flex flex-col items-center p-6 md:p-12 ${isRtl ? 'text-right' : 'text-left'}`} dir={isRtl ? 'rtl' : 'ltr'}>
       
-      {/* DISCRETE ADMIN LINK */}
       <button 
         onClick={onGoAdmin}
-        className="fixed top-8 right-8 bg-zinc-900/30 backdrop-blur-md border border-white/5 p-4 rounded-full text-zinc-700 hover:text-zinc-400 transition-all z-50 flex items-center gap-2 group"
+        className={`fixed top-8 ${isRtl ? 'left-8' : 'right-8'} bg-zinc-900/50 backdrop-blur-md border border-white/10 px-6 py-3 rounded-2xl text-zinc-500 hover:text-white transition-all z-50 flex items-center gap-3 group shadow-2xl`}
       >
-         <span className="text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{t.admin}</span>
-         <Lock size={16} />
+         <span className="text-[10px] font-black uppercase tracking-widest">{t.admin}</span>
+         <div className="w-8 h-8 bg-zinc-800 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 transition-colors">
+            <Settings size={16} />
+         </div>
       </button>
 
       <div className="max-w-xl w-full space-y-10 animate-fadeIn pt-16">
@@ -125,7 +127,7 @@ const SurveyView: React.FC<Props> = ({ session, onSubmit, onGoAdmin }) => {
               <div className="space-y-4">
                 <label className="text-xs font-black text-zinc-500 uppercase tracking-widest block">{t.chooseSide}</label>
                 <div className="grid grid-cols-1 gap-3">
-                  {session.sides.map(s => (
+                  {(session.sides || []).map(s => (
                     <button 
                       key={s}
                       onClick={() => setSide(s)}
@@ -149,14 +151,19 @@ const SurveyView: React.FC<Props> = ({ session, onSubmit, onGoAdmin }) => {
             <div className="absolute top-0 left-0 h-2 bg-indigo-500 transition-all duration-700" style={{ width: `${(step / questions.length) * 100}%` }}></div>
             <div className="space-y-6">
               <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">{t.question} {step} {t.of} {questions.length}</p>
-              <h3 className="text-3xl font-black leading-tight text-white">{currentQ.text}</h3>
+              <h3 className="text-3xl font-black leading-tight text-white">{currentQ?.text || 'Loading question...'}</h3>
             </div>
             <div className="grid grid-cols-7 gap-2">
               {[1, 2, 3, 4, 5, 6, 7].map(num => (
                 <button
                   key={num}
-                  onClick={() => { setScores({ ...scores, [currentQ.id]: num }); setTimeout(() => setStep(step + 1), 200); }}
-                  className={`aspect-square rounded-xl text-xl font-black flex items-center justify-center transition-all ${scores[currentQ.id] === num ? 'bg-indigo-600 text-white scale-110 shadow-2xl shadow-indigo-500/40' : 'bg-zinc-900 text-zinc-600 hover:bg-zinc-800'}`}
+                  disabled={!currentQ}
+                  onClick={() => { 
+                    if (!currentQ) return;
+                    setScores({ ...scores, [currentQ.id]: num }); 
+                    setTimeout(() => setStep(step + 1), 200); 
+                  }}
+                  className={`aspect-square rounded-xl text-xl font-black flex items-center justify-center transition-all ${currentQ && scores[currentQ.id] === num ? 'bg-indigo-600 text-white scale-110 shadow-2xl shadow-indigo-500/40' : 'bg-zinc-900 text-zinc-600 hover:bg-zinc-800'}`}
                 >
                   {num}
                 </button>
