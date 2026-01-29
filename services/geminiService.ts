@@ -24,6 +24,7 @@ const DEFAULT_ANALYSIS: AIAnalysis = {
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
+  // Senior Engineer Fix: Exclusively use process.env.API_KEY to initialize GoogleGenAI
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
@@ -95,6 +96,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 };
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
+  // Senior Engineer Fix: Exclusively use process.env.API_KEY to initialize GoogleGenAI
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   

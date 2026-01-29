@@ -30,7 +30,8 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     const outcomeQs = questions.filter(q => outcomeIds.includes(q.id) || q.shortLabel === 'OUTCOME_SATISFACTION');
     const driverQs = questions.filter(q => !outcomeQs.find(oq => oq.id === q.id));
     
-    const groups: string[] = Array.from(new Set(driverQs.map(q => q.shortLabel || 'General'))).filter(Boolean);
+    // Senior Engineer Fix: Explicitly type Array.from as string[] to resolve 'unknown[]' inference issues
+    const groups: string[] = Array.from<string>(new Set(driverQs.map(q => q.shortLabel || 'General'))).filter((g): g is string => !!g);
     let maxGapValue = -1, gapLabel = '';
 
     const driverData = groups.map(label => {

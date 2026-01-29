@@ -5,7 +5,7 @@ import { dbService } from './services/dbService';
 import AdminDashboard from './components/AdminDashboard';
 import SurveyView from './components/SurveyView';
 import ResultsView from './components/ResultsView';
-import { ShieldCheck, Plus, LayoutDashboard } from 'lucide-react';
+import { ShieldCheck, Plus, LayoutDashboard, Settings, Home } from 'lucide-react';
 
 type ViewState = {
   main: 'admin' | 'survey' | 'landing';
@@ -126,9 +126,9 @@ const App: React.FC = () => {
             </button>
             <button 
               onClick={goToAdmin}
-              className="bg-zinc-900 border border-zinc-800 px-12 py-6 rounded-3xl font-black text-xl hover:bg-zinc-800 transition-all flex items-center gap-3 justify-center"
+              className="bg-white text-black px-12 py-6 rounded-3xl font-black text-xl hover:bg-zinc-200 transition-all flex items-center gap-3 justify-center shadow-xl"
             >
-              ניהול מערכת <LayoutDashboard size={20} />
+              ניהול מערכת (אדמין) <LayoutDashboard size={20} />
             </button>
           </div>
           
@@ -137,9 +137,13 @@ const App: React.FC = () => {
                <p className="text-zinc-600 font-black text-[10px] uppercase tracking-widest mb-6">ממשקים קיימים במערכת</p>
                <div className="flex flex-wrap justify-center gap-3">
                   {sessions.slice(0, 3).map(s => (
-                    <div key={s.id} className="bg-zinc-900/50 border border-zinc-800 px-6 py-3 rounded-2xl text-sm font-bold text-zinc-400">
-                      {s.title}
-                    </div>
+                    <button 
+                      key={s.id} 
+                      onClick={() => setView({ main: 'admin', adminTab: 'results', selectedId: s.id })}
+                      className="bg-zinc-900/50 border border-zinc-800 px-6 py-3 rounded-2xl text-sm font-bold text-zinc-400 hover:text-white hover:border-indigo-500 transition-all"
+                    >
+                      {s.title} (צפה בנתונים)
+                    </button>
                   ))}
                </div>
             </div>
@@ -156,7 +160,7 @@ const App: React.FC = () => {
           <div className="flex gap-4">
             <button 
               onClick={() => setView({ main: 'admin', adminTab: 'settings', selectedId: null })} 
-              className={`px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 ${view.adminTab === 'settings' ? 'text-white bg-indigo-600' : 'text-indigo-400 bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white'}`}
+              className={`px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 ${view.adminTab === 'settings' ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'text-indigo-400 bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white'}`}
             >
               <Plus size={14} /> 
               <span>ממשק חדש</span>
@@ -166,7 +170,14 @@ const App: React.FC = () => {
               className={`px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 ${view.adminTab === 'list' ? 'text-white bg-zinc-800 border border-zinc-700' : 'text-zinc-500 hover:text-white bg-transparent hover:bg-zinc-900'}`}
             >
               <LayoutDashboard size={14} />
-              <span>ניהול מערכת</span>
+              <span>ניהול שותפויות</span>
+            </button>
+            <button 
+              onClick={goToLanding} 
+              className={`px-6 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 text-zinc-500 hover:text-white bg-transparent hover:bg-zinc-900`}
+            >
+              <Home size={14} />
+              <span>בית</span>
             </button>
           </div>
 
