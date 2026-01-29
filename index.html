@@ -60,18 +60,19 @@
       // Safe environment variable shim
       window.process = window.process || { env: {} };
       window.process.env = window.process.env || {};
-      window.process.env.NODE_ENV = window.process.env.NODE_ENV || 'production';
       
-      // Attempt to capture injected variables if the build tool missed them
-      // This bridges the Netlify naming convention shown in the screenshot
-      if (typeof import.meta !== 'undefined' && import.meta.env) {
-        Object.assign(window.process.env, import.meta.env);
-      }
-      
-      // Specifically ensure API_KEY is available if VITE_GEMINI_API_KEY exists
-      if (!window.process.env.API_KEY && window.process.env.VITE_GEMINI_API_KEY) {
-        window.process.env.API_KEY = window.process.env.VITE_GEMINI_API_KEY;
-      }
+      // Netlify injects variables into import.meta.env when using Vite
+      // This shim ensures compatibility with the Gemini SDK's expectation of process.env.API_KEY
+      try {
+        if (typeof import.meta !== 'undefined' && import.meta.env) {
+          Object.keys(import.meta.env).forEach(key => {
+            window.process.env[key] = import.meta.env[key];
+          });
+        }
+      } catch (e) {}
+
+      // Final mapping to ensure SDK requirements
+      window.process.env.API_KEY = window.process.env.VITE_GEMINI_API_KEY || window.process.env.API_KEY;
     </script>
     <script type="importmap">
 {
@@ -90,8 +91,7 @@
   }
 }
 </script>
-  <link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body class="custom-scrollbar">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
