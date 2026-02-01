@@ -238,7 +238,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                </div>
             </div>
 
-            {/* Impact Chart */}
+            {/* Impact Chart (Prediction Map) */}
             <div className="bg-[#0b0b0d] rounded-[3.5rem] p-10 border border-white/5 shadow-2xl h-[600px] flex flex-col">
                <div className="flex items-center gap-4 justify-end mb-10">
                   <div className="text-right">
@@ -251,24 +251,39 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                <div className="flex-grow">
                  {stats.impactData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stats.impactData} layout="vertical" margin={{ left: 10, right: 40, top: 20 }}>
+                      <BarChart 
+                        data={stats.impactData} 
+                        layout="vertical" 
+                        margin={{ left: 20, right: 30, top: 10, bottom: 10 }}
+                      >
                         <XAxis type="number" hide domain={[0, 1]} />
-                        <YAxis dataKey="label" type="category" tick={{ fill: '#a1a1aa', fontSize: 14, fontWeight: 900 }} width={90} />
+                        <YAxis 
+                          dataKey="label" 
+                          type="category" 
+                          tick={{ fill: '#a1a1aa', fontSize: 13, fontWeight: 900, textAnchor: 'end' }} 
+                          width={110} 
+                          axisLine={false}
+                          tickLine={false}
+                        />
                         <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => {
                           if (active && payload?.[0]) {
                             return (
                               <div className="bg-black p-4 rounded-2xl border border-zinc-800 text-right shadow-2xl">
                                  <p className="text-white font-black text-sm">{payload[0].payload.label}</p>
                                  <p className="text-emerald-400 text-xs mt-1">עוצמת השפעה: {Number(payload[0].value).toFixed(2)}</p>
-                                 <p className="text-[9px] text-zinc-600 mt-2 max-w-[140px]">במדגמים קטנים אנו מנתחים "פערי הזדמנות" - דרייברים עם ציון נמוך מקבלים עדיפות.</p>
+                                 <p className="text-[9px] text-zinc-600 mt-2 max-w-[140px]">ניתוח מנבאי המזהה את הדרייברים עם פוטנציאל ההשפעה הגבוה ביותר על הממשק.</p>
                               </div>
                             );
                           }
                           return null;
                         }} />
-                        <Bar dataKey="impact" radius={[0, 20, 20, 0]} barSize={40}>
+                        <Bar dataKey="impact" radius={[0, 20, 20, 0]} barSize={34}>
                           {stats.impactData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.impact > 0.6 ? '#10b981' : entry.impact > 0.3 ? '#6366f1' : '#1a1a1e'} />
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.impact > 0.6 ? '#10b981' : entry.impact > 0.3 ? '#6366f1' : '#27272a'} 
+                              className="transition-all duration-500"
+                            />
                           ))}
                         </Bar>
                       </BarChart>
