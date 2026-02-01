@@ -2,9 +2,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PartnershipSession, AIAnalysis } from "../types";
 
-/**
- * Robustly cleans a string that might contain markdown JSON code blocks.
- */
 const cleanJSONResponse = (text: string): string => {
   if (!text) return "";
   let cleaned = text.trim();
@@ -25,20 +22,25 @@ const DEFAULT_ANALYSIS: AIAnalysis = {
 };
 
 export const analyzePartnership = async (session: PartnershipSession, aggregatedData: any): Promise<AIAnalysis> => {
-  // Always use process.env.API_KEY as per global strict requirements.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
-    Role: Senior Management Consultant specialized in organizational interfaces.
-    Mission: Provide a sharp, data-driven diagnosis of a work partnership interface.
-    Context: ${session.context || session.title || 'General organizational interface'}
-    Raw Data:
-    - Interface Health Score (Outcome): ${aggregatedData.satisfactionScore}%
-    - Drivers performance: ${JSON.stringify(aggregatedData.driverData)}
-    - Biggest Perception Gap: ${aggregatedData.biggestGap ? `${aggregatedData.biggestGap.label} (Gap of ${aggregatedData.biggestGap.value} points)` : 'High alignment'}
+    Role: Senior Organizational Data Scientist & Strategy Consultant.
+    Mission: Diagnose an organizational partnership using Multiple Linear Regression (MLR) results.
+    
+    KEY DATA INPUTS:
+    - Overall Satisfaction Score: ${aggregatedData.satisfactionScore}%
+    - Standardized Regression Weights (Beta coefficients): ${JSON.stringify(aggregatedData.impactData)}
+    - Statistical Validity: ${aggregatedData.isRegressionValid ? 'High (Sufficient N)' : 'Low (Interpret with caution)'}
+    
+    DIAGNOSIS LOGIC:
+    1. Drivers with high Beta (Impact > 0.3) are the "True Levers". Focus recommendations here.
+    2. If a driver has a low raw score but high Beta, it's a "Critical Pain Point".
+    3. If a driver has high score and high Beta, it's a "Strategic Pillar".
+    4. Distinguish between systemic factors (Agenda, Roles, Decisions, Processes) and relational factors (Respect, Communication).
     
     Output Language: Hebrew (עברית).
-    Constraints: Return ONLY a JSON object. No conversational filler.
+    Format: Return ONLY a JSON object matching the provided schema.
   `;
 
   try {
@@ -47,8 +49,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        // To disable thinking and get faster results, set budget to 0 and provide maxOutputTokens.
-        maxOutputTokens: 2000,
+        maxOutputTokens: 2500,
         thinkingConfig: { thinkingBudget: 0 },
         responseSchema: {
           type: Type.OBJECT,
@@ -101,7 +102,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const prompt = `Convert this recommendation into 4 concrete steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
+  const prompt = `Convert this high-level recommendation into 4 concrete, actionable executive steps in Hebrew: "${recommendation}". Context: "${context}". Return a JSON array of strings.`;
   
   try {
     const response = await ai.models.generateContent({
@@ -115,7 +116,7 @@ export const expandRecommendation = async (recommendation: string, context: stri
       }
     });
     const text = response.text;
-    if (!text) return ["בדוק את שלבי הביצוע"];
+    if (!text) return ["בצע הערכה"];
     return JSON.parse(cleanJSONResponse(text));
   } catch (error) {
     return ["קבע פגישה", "הגדר יעדים", "תעד הסכמות"];
