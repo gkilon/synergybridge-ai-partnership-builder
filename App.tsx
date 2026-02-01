@@ -5,7 +5,7 @@ import { dbService } from './services/dbService';
 import AdminDashboard from './components/AdminDashboard';
 import SurveyView from './components/SurveyView';
 import ResultsView from './components/ResultsView';
-import { ShieldCheck, Plus, LayoutDashboard, Settings, Home, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Plus, LayoutDashboard, Settings, Home } from 'lucide-react';
 
 type ViewState = {
   main: 'admin' | 'survey' | 'landing';
@@ -27,12 +27,6 @@ const App: React.FC = () => {
     const sid = params.get('sid');
     if (sid) {
       setView({ main: 'survey', adminTab: 'list', selectedId: sid });
-    } else {
-      // Logic to prevent reset if we are already in admin mode
-      setView(prev => {
-        if (prev.main === 'admin') return prev;
-        return { main: 'landing', adminTab: 'list', selectedId: null };
-      });
     }
   }, []);
 
@@ -40,6 +34,8 @@ const App: React.FC = () => {
     syncFromUrl();
     window.addEventListener('popstate', syncFromUrl);
     
+    // The subscription will fire even if the list is empty,
+    // but we wait for it to mark the app as ready.
     const unsubscribe = dbService.subscribeToSessions((updated) => {
       setSessions(updated);
       setIsLoading(false);
@@ -96,12 +92,13 @@ const App: React.FC = () => {
   if (isLoading) return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-6">
       <ShieldCheck className="text-indigo-500 animate-pulse" size={64} />
-      <p className="text-zinc-500 font-black tracking-widest uppercase text-xs">Initializing SynergyBridge...</p>
+      <p className="text-zinc-500 font-black tracking-widest uppercase text-xs">מטען נתונים מאובטח...</p>
     </div>
   );
 
   if (view.main === 'survey' && view.selectedId) {
     const session = sessions.find(s => s.id === view.selectedId);
+    // If we're not loading but session is not found, it means the ID is invalid or sync failed.
     return <SurveyView session={session} onSubmit={(res) => submitResponse(view.selectedId!, res)} onGoAdmin={goToAdmin} />;
   }
 
@@ -109,7 +106,6 @@ const App: React.FC = () => {
   if (view.main === 'landing') {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center" dir="rtl">
-        {/* Transparent Admin Portal Link */}
         <button 
           onClick={goToAdmin}
           className="fixed top-6 left-6 text-zinc-700 hover:text-indigo-500 transition-colors flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
@@ -138,23 +134,6 @@ const App: React.FC = () => {
               ניהול שותפויות <LayoutDashboard size={20} />
             </button>
           </div>
-          
-          {sessions.length > 0 && (
-            <div className="pt-12 border-t border-zinc-900">
-               <p className="text-zinc-600 font-black text-[10px] uppercase tracking-widest mb-6">ממשקים קיימים במערכת</p>
-               <div className="flex flex-wrap justify-center gap-3">
-                  {sessions.slice(0, 5).map(s => (
-                    <button 
-                      key={s.id} 
-                      onClick={() => setView({ main: 'admin', adminTab: 'results', selectedId: s.id })}
-                      className="bg-zinc-900/50 border border-zinc-800 px-6 py-3 rounded-2xl text-sm font-bold text-zinc-400 hover:text-white hover:border-indigo-500 transition-all"
-                    >
-                      {s.title} (נתונים)
-                    </button>
-                  ))}
-               </div>
-            </div>
-          )}
         </div>
       </div>
     );

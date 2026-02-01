@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
   <head>
@@ -56,9 +57,22 @@
       }
     </style>
     <script>
-      // Environment shim for Gemini SDK
+      // Safe environment variable shim
       window.process = window.process || { env: {} };
       window.process.env = window.process.env || {};
+      
+      // Netlify injects variables into import.meta.env when using Vite
+      // This shim ensures compatibility with the Gemini SDK's expectation of process.env.API_KEY
+      try {
+        if (typeof import.meta !== 'undefined' && import.meta.env) {
+          Object.keys(import.meta.env).forEach(key => {
+            window.process.env[key] = import.meta.env[key];
+          });
+        }
+      } catch (e) {}
+
+      // Final mapping to ensure SDK requirements
+      window.process.env.API_KEY = window.process.env.VITE_GEMINI_API_KEY || window.process.env.API_KEY;
     </script>
     <script type="importmap">
 {
