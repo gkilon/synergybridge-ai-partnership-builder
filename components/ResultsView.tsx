@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import { analyzePartnership, expandRecommendation } from '../services/geminiService';
 import { DEFAULT_QUESTIONS } from '../constants';
-import { Zap, Target, Activity, AlertCircle, Sparkles, TrendingUp, BarChart3, Info, ChevronLeft, Boxes } from 'lucide-react';
+import { Zap, Target, Activity, Sparkles, TrendingUp, BarChart3, Info, ChevronLeft, Boxes, AlertCircle } from 'lucide-react';
 
 interface Props {
   session: PartnershipSession | undefined;
@@ -18,39 +18,23 @@ interface Props {
 const SIDE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
 /** 
- * STATISTICAL UTILS for Small Samples (Chi-Square / Cramér's V logic)
+ * STATISTICAL UTILS
  */
-const calculateCramersV = (x: number[], y: number[]) => {
+const calculateCorrelation = (x: number[], y: number[]) => {
   const n = x.length;
-  if (n < 2) return 0;
+  if (n < 3) return 0; // Not enough for correlation
 
-  // Create contingency table for 1-7 Likert scales
-  const levels = [1, 2, 3, 4, 5, 6, 7];
-  const table: number[][] = Array.from({ length: 7 }, () => Array(7).fill(0));
+  const muX = x.reduce((a, b) => a + b, 0) / n;
+  const muY = y.reduce((a, b) => a + b, 0) / n;
   
-  x.forEach((val, i) => {
-    const row = Math.min(6, Math.max(0, Math.round(val) - 1));
-    const col = Math.min(6, Math.max(0, Math.round(y[i]) - 1));
-    table[row][col]++;
-  });
+  const num = x.reduce((acc, val, i) => acc + (val - muX) * (y[i] - muY), 0);
+  const den = Math.sqrt(
+    x.reduce((acc, v) => acc + Math.pow(v - muX, 2), 0) * 
+    y.reduce((acc, v) => acc + Math.pow(v - muY, 2), 0)
+  );
 
-  const rowSums = table.map(row => row.reduce((a, b) => a + b, 0));
-  const colSums = Array.from({ length: 7 }, (_, c) => table.reduce((a, b) => a + b[c], 0));
-  
-  let chiSquare = 0;
-  for (let r = 0; r < 7; r++) {
-    for (let c = 0; c < 7; c++) {
-      const expected = (rowSums[r] * colSums[c]) / n;
-      if (expected > 0) {
-        chiSquare += Math.pow(table[r][c] - expected, 2) / expected;
-      }
-    }
-  }
-
-  // Cramér's V = sqrt( (chi2/n) / min(r-1, c-1) )
-  const k = 7; // dimensions
-  const v = Math.sqrt((chiSquare / n) / (k - 1));
-  return isNaN(v) ? 0 : Math.min(1, v);
+  if (den === 0) return 0;
+  return Math.abs(num / den);
 };
 
 const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
@@ -60,53 +44,85 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
 
   const stats = useMemo(() => {
     if (!session || !session.responses || session.responses.length === 0) {
-      return { driverData: [], impactData: [], satisfactionScore: 0, method: 'none' };
+      return { driverData: [], impactData: [], satisfactionScore: 0, method: 'אין נתונים', primaryDriver: null };
     }
 
-    const questions = (session.questions?.length > 0) ? session.questions : DEFAULT_QUESTIONS;
-    const outcomeIds = ['q23', 'q24'];
-    const outcomeQs = questions.filter(q => outcomeIds.includes(q.id) || q.shortLabel === 'OUTCOME_SATISFACTION');
-    const driverQs = questions.filter(q => !outcomeQs.find(oq => oq.id === q.id));
-    const groups = Array.from(new Set(driverQs.map(q => q.shortLabel || 'General'))).filter(Boolean);
+    const questions = (session.questions && session.questions.length > 0) ? session.questions : DEFAULT_QUESTIONS;
     
-    // Dependent Variable (Y) - Average Outcome
+    // Outcome calculation
+    const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION');
+    const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION');
+    const groups = Array.from(new Set(driverQs.map(q => q.shortLabel).filter(Boolean))) as string[];
+    
+    // 1. Prepare Target Y (Outcome)
     const Y = session.responses.map(r => {
       let sum = 0, count = 0;
-      outcomeQs.forEach(q => { if (r.scores?.[q.id]) { sum += r.scores[q.id]; count++; } });
-      return count > 0 ? sum / count : 0;
+      outcomeQs.forEach(q => {
+        const score = r.scores?.[q.id];
+        if (typeof score === 'number' && score > 0) { sum += score; count++; }
+      });
+      return count > 0 ? sum / count : 4; // Baseline 4
     });
 
-    // Drivers Impact via Cramér's V (Robust for small N)
-    const impactData = groups.map(label => {
-      const related = driverQs.filter(q => q.shortLabel === label);
-      const X = session.responses.map(r => {
-        let s = 0, c = 0;
-        related.forEach(q => { if (r.scores?.[q.id]) { s += r.scores[q.id]; c++; } });
-        return c > 0 ? s / c : 0;
-      });
-
-      const impactValue = calculateCramersV(X, Y);
+    // 2. Prepare Driver Data & Impact
+    const driverResults = groups.map(label => {
+      const relatedQs = driverQs.filter(q => q.shortLabel === label);
       
-      // Calculate Side Averages for Radar
-      const sideAvgs: any = { subject: label };
-      session.sides.forEach(side => {
-        const sideRes = session.responses.filter(r => r.side === side);
+      // Values for each response in this group
+      const groupX = session.responses.map(r => {
         let s = 0, c = 0;
-        sideRes.forEach(r => related.forEach(q => { if (r.scores?.[q.id]) { s += r.scores[q.id]; c++; } }));
-        sideAvgs[side] = c > 0 ? Number((s / c).toFixed(1)) : 0;
+        relatedQs.forEach(q => {
+          const score = r.scores?.[q.id];
+          if (typeof score === 'number' && score > 0) { s += score; c++; }
+        });
+        return c > 0 ? s / c : 4;
       });
 
-      return { label, impactValue, sideAvgs };
+      // Side Averages for Radar
+      const sideAvgs: any = { subject: label };
+      session.sides.forEach(sideName => {
+        const sideRes = session.responses.filter(r => r.side === sideName);
+        let s = 0, c = 0;
+        sideRes.forEach(r => {
+          relatedQs.forEach(q => {
+            const score = r.scores?.[q.id];
+            if (typeof score === 'number' && score > 0) { s += score; c++; }
+          });
+        });
+        sideAvgs[sideName] = c > 0 ? Number((s / c).toFixed(1)) : 0;
+      });
+
+      // Impact Logic: 
+      // If N < 5, correlation is noise. Use "Opportunity Gap" instead (Impact = Inverse of Score)
+      let impactValue = 0;
+      if (session.responses.length >= 5) {
+        impactValue = calculateCorrelation(groupX, Y);
+      } else {
+        // Gap Analysis: Drivers with lower scores are more "impactful" to fix
+        const avgScore = groupX.reduce((a, b) => a + b, 0) / groupX.length;
+        impactValue = Math.max(0, (7 - avgScore) / 7); 
+      }
+
+      return { label, impact: impactValue, sideAvgs };
     });
 
-    const satisfactionScore = Y.length > 0 ? Math.round(((Y.reduce((a, b) => a + b, 0) / Y.length - 1) / 6) * 100) : 0;
+    // Satisfaction Score
+    const totalAvgY = Y.reduce((a, b) => a + b, 0) / Y.length;
+    const satisfactionScore = Math.round(((totalAvgY - 1) / 6) * 100);
+
+    // Method Label
+    const methodLabel = session.responses.length >= 5 ? 'Statistical Correlation' : 'Gap Analysis';
+
+    // Primary Driver check: avoid Agenda favoritism if all are zero
+    const sortedImpact = [...driverResults].sort((a, b) => b.impact - a.impact);
+    const primary = sortedImpact[0].impact > 0 ? sortedImpact[0] : null;
 
     return { 
-      driverData: impactData.map(d => d.sideAvgs), 
-      impactData: impactData.map(d => ({ label: d.label, impact: d.impactValue })).sort((a, b) => b.impact - a.impact), 
+      driverData: driverResults.map(r => r.sideAvgs), 
+      impactData: driverResults.map(r => ({ label: r.label, impact: Number(r.impact.toFixed(2)) })).sort((a, b) => b.impact - a.impact), 
       satisfactionScore,
-      method: session.responses.length < 10 ? 'Chi-Square (Cramér\'s V)' : 'Significance Analysis',
-      primaryDriver: impactData.sort((a, b) => b.impactValue - a.impactValue)[0]
+      method: methodLabel,
+      primaryDriver: primary
     };
   }, [session]);
 
@@ -139,11 +155,11 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
            <div className="text-right">
               <h2 className="text-5xl font-black text-white tracking-tighter leading-none mb-2">{session.title}</h2>
               <div className="flex items-center gap-3 justify-end">
-                 <span className="text-indigo-500 font-black text-[11px] uppercase tracking-[0.3em]">Advanced Relationship Analytics</span>
+                 <span className="text-indigo-500 font-black text-[11px] uppercase tracking-[0.3em]">Statistical Synergy Mapping</span>
                  <div className="w-12 h-px bg-zinc-800"></div>
               </div>
            </div>
-           <div className="w-20 h-20 bg-indigo-600 rounded-[2.2rem] flex items-center justify-center shadow-3xl shadow-indigo-600/40 transform -rotate-3 hover:rotate-0 transition-transform">
+           <div className="w-20 h-20 bg-indigo-600 rounded-[2.2rem] flex items-center justify-center shadow-3xl shadow-indigo-600/40 transform -rotate-2 hover:rotate-0 transition-transform">
               <Boxes className="text-white" size={36} />
            </div>
         </div>
@@ -154,7 +170,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
            </button>
            <button onClick={handleAnalyze} disabled={loading} className={`px-14 py-5 rounded-[1.5rem] font-black transition-all flex items-center gap-3 shadow-2xl ${loading ? 'bg-zinc-800 text-zinc-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 active:scale-95'}`}>
              {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <Sparkles size={22} />}
-             {loading ? 'מבצע אופטימיזציה...' : 'הפעל ניתוח AI'}
+             {loading ? 'מפענח...' : 'הפעל ניתוח AI'}
            </button>
         </div>
       </div>
@@ -162,30 +178,29 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
         <div className="xl:col-span-8 space-y-10">
           
-          {/* Dashboard Metric Cards */}
+          {/* Top Score Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-[#0b0b0d] rounded-[2.5rem] p-10 border border-white/5 text-right shadow-xl">
                <Activity className="text-indigo-500 mb-6" size={32} />
-               <h3 className="text-zinc-500 text-[11px] font-black uppercase tracking-widest mb-1">מדד בריאות הממשק</h3>
+               <h3 className="text-zinc-500 text-[11px] font-black uppercase tracking-widest mb-1">מדד בריאות (Global Health)</h3>
                <div className="text-7xl font-black text-white tracking-tighter">{stats.satisfactionScore}%</div>
             </div>
 
-            <div className="bg-[#0b0b0d] rounded-[2.5rem] p-10 border border-white/5 text-right shadow-xl relative overflow-hidden group">
+            <div className="bg-[#0b0b0d] rounded-[2.5rem] p-10 border border-white/5 text-right shadow-xl">
                <Zap className="text-amber-500 mb-6" size={32} />
-               <h3 className="text-zinc-500 text-[11px] font-black uppercase tracking-widest mb-1">מנוף השיפור העיקרי</h3>
+               <h3 className="text-zinc-500 text-[11px] font-black uppercase tracking-widest mb-1">המניע המשפיע ביותר</h3>
                <div className="text-3xl font-black text-white leading-tight min-h-[3.5rem] flex items-center justify-end">
-                  {stats.primaryDriver ? stats.primaryDriver.label : 'מעבד...'}
+                  {stats.primaryDriver ? stats.primaryDriver.label : 'לא נמצא מניע בולט'}
                </div>
-               <div className="absolute top-0 left-0 w-1 h-full bg-amber-500/20 group-hover:bg-amber-500/50 transition-all"></div>
             </div>
 
             <div className="bg-[#0b0b0d] rounded-[2.5rem] p-10 border border-white/5 text-right shadow-xl">
                <TrendingUp className="text-emerald-500 mb-6" size={32} />
-               <h3 className="text-zinc-500 text-[11px] font-black uppercase tracking-widest mb-1">מודל סטטיסטי</h3>
+               <h3 className="text-zinc-500 text-[11px] font-black uppercase tracking-widest mb-1">שיטת שקלול</h3>
                <div className="text-3xl font-black text-white tracking-tighter flex items-center justify-end h-16">
                   {stats.method}
                </div>
-               <p className="text-zinc-600 text-[10px] font-bold mt-2">מותאם אוטומטית למדגמים קטנים</p>
+               <p className="text-zinc-600 text-[10px] font-bold mt-2">דיוק סטטיסטי מותאם למדגם</p>
             </div>
           </div>
 
@@ -194,19 +209,27 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
             <div className="bg-[#0b0b0d] rounded-[3.5rem] p-10 border border-white/5 shadow-2xl h-[600px] flex flex-col items-center">
                <div className="w-full flex items-center gap-4 justify-end mb-10">
                   <div className="text-right">
-                     <h3 className="text-2xl font-black text-white">פרופיל הממשק</h3>
-                     <p className="text-zinc-500 text-[10px] font-bold">ממוצע ציונים לפי דרייבר (Averages)</p>
+                     <h3 className="text-2xl font-black text-white">תמונת מצב (Averages)</h3>
+                     <p className="text-zinc-500 text-[10px] font-bold">איך הצוותים רואים את המציאות?</p>
                   </div>
                   <Target className="text-indigo-500" size={28} />
                </div>
-               <div className="w-full h-full">
-                 <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={stats.driverData}>
+               <div className="w-full h-full flex items-center justify-center">
+                 <ResponsiveContainer width="100%" height="90%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={stats.driverData}>
                       <PolarGrid stroke="#1a1a1e" />
                       <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 13, fontWeight: 900 }} />
                       <PolarRadiusAxis domain={[0, 7]} tick={false} axisLine={false} />
                       {(session.sides || []).map((side, idx) => (
-                        <Radar key={side} name={side} dataKey={side} stroke={SIDE_COLORS[idx % SIDE_COLORS.length]} fill={SIDE_COLORS[idx % SIDE_COLORS.length]} fillOpacity={0.15} strokeWidth={4} />
+                        <Radar 
+                          key={side} 
+                          name={side} 
+                          dataKey={side} 
+                          stroke={SIDE_COLORS[idx % SIDE_COLORS.length]} 
+                          fill={SIDE_COLORS[idx % SIDE_COLORS.length]} 
+                          fillOpacity={0.15} 
+                          strokeWidth={4} 
+                        />
                       ))}
                       <Legend verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 900 }} />
                       <Tooltip contentStyle={{ backgroundColor: '#000', borderRadius: '16px', border: '1px solid #27272a', textAlign: 'right' }} />
@@ -215,39 +238,47 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                </div>
             </div>
 
-            {/* Impact Map View */}
+            {/* Impact Chart */}
             <div className="bg-[#0b0b0d] rounded-[3.5rem] p-10 border border-white/5 shadow-2xl h-[600px] flex flex-col">
                <div className="flex items-center gap-4 justify-end mb-10">
                   <div className="text-right">
-                     <h3 className="text-2xl font-black text-white">מפת השפעה (Impact Weight)</h3>
-                     <p className="text-zinc-500 text-[10px] font-bold">חוזק הקשר לשביעות רצון (Cramér's V)</p>
+                     <h3 className="text-2xl font-black text-white">מפת השפעה (Impact)</h3>
+                     <p className="text-zinc-500 text-[10px] font-bold">מי המשתנים שקובעים את ההצלחה?</p>
                   </div>
                   <Info className="text-emerald-500" size={28} />
                </div>
+               
                <div className="flex-grow">
-                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.impactData} layout="vertical" margin={{ left: 10, right: 40, top: 20 }}>
-                      <XAxis type="number" hide domain={[0, 1]} />
-                      <YAxis dataKey="label" type="category" tick={{ fill: '#a1a1aa', fontSize: 14, fontWeight: 900 }} width={90} />
-                      <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => {
-                        if (active && payload?.[0]) {
-                          return (
-                            <div className="bg-black p-4 rounded-2xl border border-zinc-800 text-right shadow-2xl">
-                               <p className="text-white font-black text-sm">{payload[0].payload.label}</p>
-                               <p className="text-emerald-400 text-xs mt-1">עוצמת תלות: {Number(payload[0].value).toFixed(2)}</p>
-                               <p className="text-[9px] text-zinc-600 mt-2 max-w-[140px]">מחושב באמצעות Chi-Square - מדויק יותר למדגמים קטנים.</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }} />
-                      <Bar dataKey="impact" radius={[0, 20, 20, 0]} barSize={40}>
-                        {stats.impactData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.impact > 0.5 ? '#10b981' : entry.impact > 0.25 ? '#6366f1' : '#1a1a1e'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                 </ResponsiveContainer>
+                 {stats.impactData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.impactData} layout="vertical" margin={{ left: 10, right: 40, top: 20 }}>
+                        <XAxis type="number" hide domain={[0, 1]} />
+                        <YAxis dataKey="label" type="category" tick={{ fill: '#a1a1aa', fontSize: 14, fontWeight: 900 }} width={90} />
+                        <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => {
+                          if (active && payload?.[0]) {
+                            return (
+                              <div className="bg-black p-4 rounded-2xl border border-zinc-800 text-right shadow-2xl">
+                                 <p className="text-white font-black text-sm">{payload[0].payload.label}</p>
+                                 <p className="text-emerald-400 text-xs mt-1">עוצמת השפעה: {Number(payload[0].value).toFixed(2)}</p>
+                                 <p className="text-[9px] text-zinc-600 mt-2 max-w-[140px]">במדגמים קטנים אנו מנתחים "פערי הזדמנות" - דרייברים עם ציון נמוך מקבלים עדיפות.</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }} />
+                        <Bar dataKey="impact" radius={[0, 20, 20, 0]} barSize={40}>
+                          {stats.impactData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.impact > 0.6 ? '#10b981' : entry.impact > 0.3 ? '#6366f1' : '#1a1a1e'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                 ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-zinc-600 italic">
+                       <AlertCircle size={48} className="mb-4 opacity-20" />
+                       <p>אין מספיק נתונים להצגת מפת השפעה</p>
+                    </div>
+                 )}
                </div>
             </div>
           </div>
@@ -269,7 +300,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                   <div className="w-24 h-24 bg-zinc-900 rounded-[2.5rem] flex items-center justify-center text-5xl shadow-inner border border-white/5 animate-pulse">🧠</div>
                   <div className="space-y-4">
                      <p className="text-white text-xl font-black">ממתין להרצת הניתוח</p>
-                     <p className="text-zinc-500 text-xs font-bold leading-relaxed">ה-AI ישקלל את עוצמת התלות בין הדרייברים לתוצאות כדי לבנות תוכנית עבודה מותאמת אישית.</p>
+                     <p className="text-zinc-500 text-xs font-bold leading-relaxed">ה-AI ישקלל את הנתונים ויבנה תוכנית עבודה לשיפור הממשק הארגוני.</p>
                   </div>
                </div>
              ) : (
