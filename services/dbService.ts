@@ -1,20 +1,17 @@
 
 import { PartnershipSession, ParticipantResponse } from '../types';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { 
-  getFirestore, collection, getDocs, setDoc, doc, updateDoc, deleteDoc,
+  getFirestore, collection, getDoc, setDoc, doc, updateDoc, deleteDoc,
   arrayUnion, query, orderBy, onSnapshot
 } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, User, signOut } from 'firebase/auth';
 
 const STORAGE_KEY = 'synergy_db_final_v1';
 
-// Robust environment variable detection for Vite/Netlify
-const getEnv = (key: string) => {
-  const v = (import.meta as any).env?.[`VITE_${key}`] || 
-            (window as any).process?.env?.[`VITE_${key}`] ||
-            (window as any).process?.env?.[key];
-  return v;
+// Direct access to Vite env variables
+const getEnv = (key: string): string => {
+  return (import.meta as any).env?.[`VITE_${key}`] || '';
 };
 
 const firebaseConfig = {
@@ -30,18 +27,17 @@ let db: any = null;
 let auth: any = null;
 let isConnected = false;
 
+// Safe init
 if (firebaseConfig.apiKey && firebaseConfig.projectId) {
   try {
-    const app = initializeApp(firebaseConfig);
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     db = getFirestore(app);
     auth = getAuth(app);
     isConnected = true;
-    console.log("SynergyBridge: Cloud connected successfully.");
+    console.log("SynergyBridge: Firebase Cloud Initialized.");
   } catch (e) {
-    console.error("SynergyBridge: Firebase failed to init:", e);
+    console.error("SynergyBridge: Firebase Init Failed:", e);
   }
-} else {
-  console.warn("SynergyBridge: Missing Firebase config. Running in LOCAL MODE.");
 }
 
 const getLocalSessions = (): PartnershipSession[] => {
@@ -56,46 +52,74 @@ const saveLocalSessions = (sessions: PartnershipSession[]) => {
 };
 
 export const dbService = {
-  isCloudActive(): boolean { return isConnected; },
+  isCloudActive(): boolean { return isConnected && !!db; },
+  
   async logout(): Promise<void> { if (auth) await signOut(auth); },
+
   onAuthChange(callback: (user: User | null) => void) {
     if (!auth) { callback(null); return () => {}; }
     return onAuthStateChanged(auth, callback);
   },
-  subscribeToSessions(callback: (sessions: PartnershipSession[]) => void) {
-    // Immediate local load
-    const local = getLocalSessions();
-    callback(local);
 
+  subscribeToSessions(callback: (sessions: PartnershipSession[]) => void) {
+    callback(getLocalSessions());
     if (!db) return () => {};
 
     const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
       const sessions = snapshot.docs.map(doc => doc.data() as PartnershipSession);
-      // We update local cache with cloud data
-      saveLocalSessions(sessions);
-      callback(sessions);
+      if (sessions.length > 0) {
+        saveLocalSessions(sessions);
+        callback(sessions);
+      }
     }, (err) => {
-      console.error("Cloud Sync Error:", err);
+      console.warn("Snapshot sync issue:", err);
     });
   },
+
+  // Direct fetch for deep-linked users
+  async getSessionById(id: string): Promise<PartnershipSession | null> {
+    // Check local first
+    const local = getLocalSessions().find(s => s.id === id);
+    if (local) return local;
+
+    // Fetch from cloud
+    if (db) {
+      try {
+        const docRef = doc(db, 'sessions', id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data() as PartnershipSession;
+          // Update local cache
+          const sessions = getLocalSessions();
+          if (!sessions.find(s => s.id === id)) {
+            sessions.push(data);
+            saveLocalSessions(sessions);
+          }
+          return data;
+        }
+      } catch (err) {
+        console.error("Direct fetch failed:", err);
+      }
+    }
+    return null;
+  },
+
   async saveSession(session: PartnershipSession): Promise<void> {
-    // 1. Local Save (Instant UI update)
     const local = getLocalSessions();
     const idx = local.findIndex(s => s.id === session.id);
     if (idx >= 0) local[idx] = session; else local.push(session);
     saveLocalSessions(local);
 
-    // 2. Cloud Save (Sync)
     if (db) {
       try {
         await setDoc(doc(db, 'sessions', session.id), session);
-        console.log("Session synced to cloud:", session.id);
       } catch (err) {
-        console.error("Cloud Sync Failed:", err);
+        console.error("Cloud Save Error:", err);
       }
     }
   },
+
   async deleteSession(sessionId: string): Promise<void> {
     const local = getLocalSessions().filter(s => s.id !== sessionId);
     saveLocalSessions(local);
@@ -103,10 +127,11 @@ export const dbService = {
       try {
         await deleteDoc(doc(db, 'sessions', sessionId));
       } catch (err) {
-        console.error("Cloud Delete Failed:", err);
+        console.error("Cloud Delete Error:", err);
       }
     }
   },
+
   async addResponse(sessionId: string, response: ParticipantResponse): Promise<void> {
     const local = getLocalSessions();
     const session = local.find(s => s.id === sessionId);
@@ -121,7 +146,7 @@ export const dbService = {
           responses: arrayUnion(response)
         });
       } catch (err) {
-        console.error("Cloud Response Failed:", err);
+        console.error("Cloud Response Error:", err);
       }
     }
   }

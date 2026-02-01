@@ -5,7 +5,7 @@ import { dbService } from './services/dbService';
 import AdminDashboard from './components/AdminDashboard';
 import SurveyView from './components/SurveyView';
 import ResultsView from './components/ResultsView';
-import { ShieldCheck, Plus, LayoutDashboard, Settings, Home, Search } from 'lucide-react';
+import { ShieldCheck, Plus, LayoutDashboard, Settings, Search, AlertTriangle, RefreshCw } from 'lucide-react';
 
 type ViewState = {
   main: 'admin' | 'survey' | 'landing';
@@ -21,15 +21,44 @@ const App: React.FC = () => {
     selectedId: null
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [syncCount, setSyncCount] = useState(0);
+  const [isSearchingSession, setIsSearchingSession] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+
+  const resolveSession = useCallback(async (sid: string) => {
+    setIsSearchingSession(true);
+    setSearchError(false);
+    
+    // Attempt direct fetch
+    const session = await dbService.getSessionById(sid);
+    if (session) {
+      setSessions(prev => {
+        if (prev.find(s => s.id === sid)) return prev;
+        return [...prev, session];
+      });
+      setIsSearchingSession(false);
+    } else {
+      // Small delay and retry for eventual consistency
+      setTimeout(async () => {
+        const retry = await dbService.getSessionById(sid);
+        if (retry) {
+          setSessions(prev => [...prev, retry]);
+          setIsSearchingSession(false);
+        } else {
+          setSearchError(true);
+          setIsSearchingSession(false);
+        }
+      }, 3000);
+    }
+  }, []);
 
   const syncFromUrl = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
     const sid = params.get('sid');
     if (sid) {
       setView({ main: 'survey', adminTab: 'list', selectedId: sid });
+      resolveSession(sid);
     }
-  }, []);
+  }, [resolveSession]);
 
   useEffect(() => {
     syncFromUrl();
@@ -38,7 +67,6 @@ const App: React.FC = () => {
     const unsubscribe = dbService.subscribeToSessions((updated) => {
       setSessions(updated);
       setIsLoading(false);
-      setSyncCount(prev => prev + 1);
     });
 
     return () => {
@@ -92,23 +120,49 @@ const App: React.FC = () => {
   if (isLoading) return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-6">
       <ShieldCheck className="text-indigo-500 animate-pulse" size={64} />
-      <p className="text-zinc-500 font-black tracking-widest uppercase text-xs">Connecting to Cloud Securely...</p>
+      <p className="text-zinc-500 font-black tracking-widest uppercase text-xs">Authenticating SynergyBridge...</p>
     </div>
   );
 
+  // Searching for a specific SID from URL
+  if (view.main === 'survey' && view.selectedId && isSearchingSession) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-8 p-6 text-center">
+        <div className="relative">
+           <div className="w-20 h-20 border-4 border-indigo-600/20 border-t-indigo-500 rounded-full animate-spin"></div>
+           <Search className="absolute inset-0 m-auto text-indigo-500" size={24} />
+        </div>
+        <div className="space-y-2">
+           <h2 className="text-2xl font-black text-white">מתחבר לממשק...</h2>
+           <p className="text-zinc-500 text-sm font-bold">אנחנו מושכים את נתוני השאלון מהענן עבורך.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error finding the specific SID
+  if (view.main === 'survey' && view.selectedId && searchError) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-8 p-6 text-center" dir="rtl">
+        <div className="w-20 h-20 bg-rose-500/10 rounded-[2rem] flex items-center justify-center text-rose-500 mx-auto">
+           <AlertTriangle size={40} />
+        </div>
+        <div className="space-y-3 max-w-sm">
+           <h2 className="text-3xl font-black text-white">הממשק לא נמצא</h2>
+           <p className="text-zinc-500 font-medium">הקישור שקיבלת לא קיים בענן או שטרם סונכרן. וודא שהמנהל יצר את הממשק כשהוא מחובר (נורית ירוקה).</p>
+        </div>
+        <div className="flex flex-col gap-4 w-full max-w-xs">
+           <button onClick={() => window.location.reload()} className="w-full bg-white text-black py-4 rounded-2xl font-black flex items-center justify-center gap-2">
+              <RefreshCw size={18} /> נסה שוב
+           </button>
+           <button onClick={goToLanding} className="text-zinc-500 font-black text-xs uppercase tracking-widest">חזרה לדף הבית</button>
+        </div>
+      </div>
+    );
+  }
+
   if (view.main === 'survey' && view.selectedId) {
     const session = sessions.find(s => s.id === view.selectedId);
-    
-    // If session is missing but we're in cloud mode, maybe wait a bit longer for first sync
-    if (!session && syncCount < 2 && dbService.isCloudActive()) {
-      return (
-        <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-6">
-          <Search className="text-indigo-500 animate-spin" size={64} />
-          <p className="text-zinc-500 font-black tracking-widest uppercase text-xs">מחפש ממשק בענן...</p>
-        </div>
-      );
-    }
-
     return <SurveyView session={session} onSubmit={(res) => submitResponse(view.selectedId!, res)} onGoAdmin={goToAdmin} />;
   }
 
