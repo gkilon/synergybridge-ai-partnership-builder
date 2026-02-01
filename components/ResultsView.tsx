@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { PartnershipSession, AIAnalysis } from '../types';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
-  ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, Cell
+  ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, Cell, LabelList
 } from 'recharts';
 import { analyzePartnership, expandRecommendation } from '../services/geminiService';
 import { DEFAULT_QUESTIONS } from '../constants';
@@ -22,7 +22,7 @@ const SIDE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
  */
 const calculateCorrelation = (x: number[], y: number[]) => {
   const n = x.length;
-  if (n < 3) return 0; // Not enough for correlation
+  if (n < 3) return 0;
 
   const muX = x.reduce((a, b) => a + b, 0) / n;
   const muY = y.reduce((a, b) => a + b, 0) / n;
@@ -48,27 +48,21 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     }
 
     const questions = (session.questions && session.questions.length > 0) ? session.questions : DEFAULT_QUESTIONS;
-    
-    // Outcome calculation
     const outcomeQs = questions.filter(q => q.shortLabel === 'OUTCOME_SATISFACTION');
     const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION');
     const groups = Array.from(new Set(driverQs.map(q => q.shortLabel).filter(Boolean))) as string[];
     
-    // 1. Prepare Target Y (Outcome)
     const Y = session.responses.map(r => {
       let sum = 0, count = 0;
       outcomeQs.forEach(q => {
         const score = r.scores?.[q.id];
         if (typeof score === 'number' && score > 0) { sum += score; count++; }
       });
-      return count > 0 ? sum / count : 4; // Baseline 4
+      return count > 0 ? sum / count : 4;
     });
 
-    // 2. Prepare Driver Data & Impact
     const driverResults = groups.map(label => {
       const relatedQs = driverQs.filter(q => q.shortLabel === label);
-      
-      // Values for each response in this group
       const groupX = session.responses.map(r => {
         let s = 0, c = 0;
         relatedQs.forEach(q => {
@@ -78,7 +72,6 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         return c > 0 ? s / c : 4;
       });
 
-      // Side Averages for Radar
       const sideAvgs: any = { subject: label };
       session.sides.forEach(sideName => {
         const sideRes = session.responses.filter(r => r.side === sideName);
@@ -92,13 +85,10 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         sideAvgs[sideName] = c > 0 ? Number((s / c).toFixed(1)) : 0;
       });
 
-      // Impact Logic: 
-      // If N < 5, correlation is noise. Use "Opportunity Gap" instead (Impact = Inverse of Score)
       let impactValue = 0;
       if (session.responses.length >= 5) {
         impactValue = calculateCorrelation(groupX, Y);
       } else {
-        // Gap Analysis: Drivers with lower scores are more "impactful" to fix
         const avgScore = groupX.reduce((a, b) => a + b, 0) / groupX.length;
         impactValue = Math.max(0, (7 - avgScore) / 7); 
       }
@@ -106,14 +96,9 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       return { label, impact: impactValue, sideAvgs };
     });
 
-    // Satisfaction Score
     const totalAvgY = Y.reduce((a, b) => a + b, 0) / Y.length;
     const satisfactionScore = Math.round(((totalAvgY - 1) / 6) * 100);
-
-    // Method Label
     const methodLabel = session.responses.length >= 5 ? 'Statistical Correlation' : 'Gap Analysis';
-
-    // Primary Driver check: avoid Agenda favoritism if all are zero
     const sortedImpact = [...driverResults].sort((a, b) => b.impact - a.impact);
     const primary = sortedImpact[0].impact > 0 ? sortedImpact[0] : null;
 
@@ -178,7 +163,6 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
         <div className="xl:col-span-8 space-y-10">
           
-          {/* Top Score Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-[#0b0b0d] rounded-[2.5rem] p-10 border border-white/5 text-right shadow-xl">
                <Activity className="text-indigo-500 mb-6" size={32} />
@@ -238,7 +222,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                </div>
             </div>
 
-            {/* Impact Chart (Prediction Map) */}
+            {/* Optimized Impact Chart */}
             <div className="bg-[#0b0b0d] rounded-[3.5rem] p-10 border border-white/5 shadow-2xl h-[600px] flex flex-col">
                <div className="flex items-center gap-4 justify-end mb-10">
                   <div className="text-right">
@@ -254,16 +238,17 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                       <BarChart 
                         data={stats.impactData} 
                         layout="vertical" 
-                        margin={{ left: 20, right: 30, top: 10, bottom: 10 }}
+                        margin={{ left: 10, right: 20, top: 20, bottom: 20 }}
                       >
-                        <XAxis type="number" hide domain={[0, 1]} />
+                        <XAxis type="number" hide domain={[0, 1.2]} />
                         <YAxis 
                           dataKey="label" 
                           type="category" 
-                          tick={{ fill: '#a1a1aa', fontSize: 13, fontWeight: 900, textAnchor: 'end' }} 
-                          width={110} 
+                          orientation="right"
                           axisLine={false}
                           tickLine={false}
+                          tick={{ fill: '#ffffff', fontSize: 15, fontWeight: 900, dx: -10 }} 
+                          width={140}
                         />
                         <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => {
                           if (active && payload?.[0]) {
@@ -271,18 +256,21 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                               <div className="bg-black p-4 rounded-2xl border border-zinc-800 text-right shadow-2xl">
                                  <p className="text-white font-black text-sm">{payload[0].payload.label}</p>
                                  <p className="text-emerald-400 text-xs mt-1">עוצמת השפעה: {Number(payload[0].value).toFixed(2)}</p>
-                                 <p className="text-[9px] text-zinc-600 mt-2 max-w-[140px]">ניתוח מנבאי המזהה את הדרייברים עם פוטנציאל ההשפעה הגבוה ביותר על הממשק.</p>
                               </div>
                             );
                           }
                           return null;
                         }} />
-                        <Bar dataKey="impact" radius={[0, 20, 20, 0]} barSize={34}>
+                        <Bar 
+                          dataKey="impact" 
+                          radius={[20, 0, 0, 20]} 
+                          barSize={32}
+                        >
                           {stats.impactData.map((entry, index) => (
                             <Cell 
                               key={`cell-${index}`} 
-                              fill={entry.impact > 0.6 ? '#10b981' : entry.impact > 0.3 ? '#6366f1' : '#27272a'} 
-                              className="transition-all duration-500"
+                              fill={entry.impact > 0.6 ? '#10b981' : entry.impact > 0.3 ? '#6366f1' : '#1a1a1e'} 
+                              style={{ filter: entry.impact > 0.1 ? 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.2))' : 'none' }}
                             />
                           ))}
                         </Bar>
