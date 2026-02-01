@@ -5,11 +5,9 @@ import {
   getFirestore, collection, getDocs, setDoc, doc, updateDoc, deleteDoc,
   arrayUnion, query, orderBy, onSnapshot
 } from 'firebase/firestore';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, User, signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 
 const STORAGE_KEY = 'synergy_db_final_v1';
-
-// Direct access to Vite environment variables is safer and more reliable
 const env = (import.meta as any).env || {};
 
 const firebaseConfig = {
@@ -24,18 +22,14 @@ const firebaseConfig = {
 let db: any = null;
 let auth: any = null;
 
-// Initialize Firebase only if mandatory config is present
 if (firebaseConfig.apiKey && firebaseConfig.projectId) {
   try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
-    console.log("SynergyBridge: Cloud Sync Enabled");
   } catch (e) {
-    console.error("Firebase Initialization Error:", e);
+    console.error("Firebase Init Error:", e);
   }
-} else {
-  console.warn("SynergyBridge: Running in Local-Only mode. Cloud variables missing.");
 }
 
 const getLocalSessions = (): PartnershipSession[] => {
@@ -51,55 +45,41 @@ const saveLocalSessions = (sessions: PartnershipSession[]) => {
 
 export const dbService = {
   isCloudActive(): boolean { return !!db; },
-  async loginWithGoogle(): Promise<User | null> {
-    if (!auth) return null;
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
-  },
   async logout(): Promise<void> { if (auth) await signOut(auth); },
   onAuthChange(callback: (user: User | null) => void) {
     if (!auth) { callback(null); return () => {}; }
     return onAuthStateChanged(auth, callback);
   },
-  async getSessions(): Promise<PartnershipSession[]> {
-    if (db) {
-      try {
-        const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const sessions = querySnapshot.docs.map(doc => doc.data() as PartnershipSession);
-        if (sessions.length > 0) { saveLocalSessions(sessions); return sessions; }
-      } catch (err) {
-        console.error("Failed to fetch sessions from Cloud:", err);
-      }
-    }
-    return getLocalSessions();
-  },
   subscribeToSessions(callback: (sessions: PartnershipSession[]) => void) {
-    if (!db) { 
-      callback(getLocalSessions()); 
-      return () => {}; 
-    }
+    // Initial load from local for speed
+    callback(getLocalSessions());
+
+    if (!db) return () => {};
+
     const q = query(collection(db, 'sessions'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
       const sessions = snapshot.docs.map(doc => doc.data() as PartnershipSession);
-      saveLocalSessions(sessions);
-      callback(sessions);
+      if (sessions.length > 0) {
+        saveLocalSessions(sessions);
+        callback(sessions);
+      }
     }, (err) => {
-      console.warn("Cloud Sync interrupted, falling back to local data.", err);
-      callback(getLocalSessions());
+      console.warn("Cloud Sync issue:", err);
     });
   },
   async saveSession(session: PartnershipSession): Promise<void> {
+    // 1. Update Local Immediately
     const local = getLocalSessions();
     const idx = local.findIndex(s => s.id === session.id);
     if (idx >= 0) local[idx] = session; else local.push(session);
     saveLocalSessions(local);
+
+    // 2. Sync to Cloud in background
     if (db) {
       try {
         await setDoc(doc(db, 'sessions', session.id), session);
       } catch (err) {
-        console.error("Cloud Save Error:", err);
+        console.error("Cloud Sync Failed (Background):", err);
       }
     }
   },

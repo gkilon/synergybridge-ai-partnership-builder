@@ -4,7 +4,7 @@ import { PartnershipSession, Question, Category, Language } from '../types';
 import { DEFAULT_QUESTIONS } from '../constants';
 import { dbService } from '../services/dbService';
 import { User } from 'firebase/auth';
-import { Save, Plus, X, Trash2, LogOut, Settings2, LayoutDashboard, KeyRound, AlertCircle } from 'lucide-react';
+import { Save, Plus, X, Trash2, LogOut, Settings2, LayoutDashboard, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   sessions: PartnershipSession[];
@@ -22,11 +22,9 @@ const AdminDashboard: React.FC<Props> = ({
   sessions, onAdd, onUpdate, onOpenSettings, onOpenResults, onDelete,
   initialEditingId, forceShowAdd, onCancel 
 }) => {
-  const [user, setUser] = useState<User | null>(null);
   const [gatePassed, setGatePassed] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [error, setError] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
   const [newTitle, setNewTitle] = useState('');
@@ -39,11 +37,6 @@ const AdminDashboard: React.FC<Props> = ({
     const passed = sessionStorage.getItem('sb_security_gate') === 'true';
     if (passed) setGatePassed(true);
     
-    const unsubscribe = dbService.onAuthChange((u) => {
-      setUser(u);
-      setAuthLoading(false);
-    });
-    
     if (initialEditingId) {
       const s = sessions.find(x => x.id === initialEditingId);
       if (s) {
@@ -54,25 +47,27 @@ const AdminDashboard: React.FC<Props> = ({
         setEditingQuestions(Array.isArray(s.questions) && s.questions.length > 0 ? s.questions : [...DEFAULT_QUESTIONS]);
       }
     } else {
-      setNewTitle('');
-      setNewSides('');
-      setNewContext('');
-      setNewLang('he');
-      setEditingQuestions([...DEFAULT_QUESTIONS]);
+      resetForm();
     }
-    
-    return () => unsubscribe();
   }, [initialEditingId, sessions]);
 
+  const resetForm = () => {
+    setNewTitle('');
+    setNewSides('');
+    setNewContext('');
+    setNewLang('he');
+    setEditingQuestions([...DEFAULT_QUESTIONS]);
+  };
+
   const handleSave = async () => {
-    if (!newTitle.trim() || !newSides.trim()) {
-      alert("נא להזין כותרת ולפחות שני צדדים לשותפות");
+    if (!newTitle.trim()) {
+      alert("נא להזין כותרת לממשק");
       return;
     }
     
     const sidesArr = newSides.split(',').map(s => s.trim()).filter(s => s);
     if (sidesArr.length < 2) {
-      alert("יש להזין לפחות שני צדדים (מופרדים בפסיק)");
+      alert("נא להזין לפחות שני צדדים לממשק (מופרדים בפסיק)");
       return;
     }
 
@@ -92,6 +87,7 @@ const AdminDashboard: React.FC<Props> = ({
         }
       } else {
         await onAdd?.(newTitle, sidesArr, editingQuestions, newContext, newLang);
+        resetForm();
       }
     } catch (err) {
       console.error("Save failed:", err);
@@ -101,19 +97,11 @@ const AdminDashboard: React.FC<Props> = ({
     }
   };
 
-  if (authLoading) return (
-    <div className="flex flex-col items-center justify-center p-20 space-y-4">
-      <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
-      <p className="text-zinc-600 font-black text-[10px] uppercase tracking-widest">Checking Auth...</p>
-    </div>
-  );
-
   if (!gatePassed) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 animate-fadeIn" dir="rtl">
         <div className="glass max-w-md w-full p-12 rounded-[3.5rem] text-center space-y-10 shadow-2xl border-white/5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent"></div>
-          
           <div className="space-y-4">
             <div className="w-16 h-16 bg-indigo-600/10 rounded-2xl flex items-center justify-center mx-auto text-indigo-500">
                <KeyRound size={32} />
@@ -123,7 +111,6 @@ const AdminDashboard: React.FC<Props> = ({
                <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Restricted Access Area</p>
             </div>
           </div>
-
           <form onSubmit={(e) => {
             e.preventDefault();
             if (passwordInput === 'giladk25') {
@@ -134,28 +121,18 @@ const AdminDashboard: React.FC<Props> = ({
               setPasswordInput('');
             }
           }} className="space-y-6">
-            <div className="space-y-2">
-               <input 
-                 type="password" 
-                 placeholder="הזן קוד גישה..." 
-                 className={`w-full bg-zinc-950 border-2 rounded-2xl p-5 text-white font-black text-center text-2xl tracking-widest transition-all outline-none ${error ? 'border-rose-500 bg-rose-500/5' : 'border-zinc-800 focus:border-indigo-500'}`}
-                 value={passwordInput}
-                 onChange={(e) => { setPasswordInput(e.target.value); setError(false); }}
-                 autoFocus
-               />
-               {error && (
-                 <div className="flex items-center justify-center gap-2 text-rose-500 animate-fadeIn">
-                    <AlertCircle size={14} />
-                    <span className="text-[10px] font-black uppercase">קוד שגוי - נסה שוב</span>
-                 </div>
-               )}
-            </div>
+            <input 
+              type="password" 
+              placeholder="הזן קוד גישה..." 
+              className={`w-full bg-zinc-950 border-2 rounded-2xl p-5 text-white font-black text-center text-2xl tracking-widest transition-all outline-none ${error ? 'border-rose-500 bg-rose-500/5' : 'border-zinc-800 focus:border-indigo-500'}`}
+              value={passwordInput}
+              onChange={(e) => { setPasswordInput(e.target.value); setError(false); }}
+              autoFocus
+            />
             <button type="submit" className="w-full bg-white text-black py-5 rounded-2xl font-black text-lg transition-all shadow-xl hover:bg-zinc-200 active:scale-95">
               אימות וכניסה
             </button>
           </form>
-          
-          <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest pt-4">© SynergyBridge Security Core</p>
         </div>
       </div>
     );
@@ -209,7 +186,6 @@ const AdminDashboard: React.FC<Props> = ({
                 </select>
               </div>
             </div>
-
             <div className="space-y-4">
               <label className="text-xs font-black text-zinc-500 uppercase tracking-widest block text-right">הקשר ארגוני ל-AI (אופציונלי)</label>
               <textarea 
@@ -234,13 +210,9 @@ const AdminDashboard: React.FC<Props> = ({
       ) : (
         <div className="space-y-8">
           <div className="flex justify-between items-center mb-12">
-            <div className="flex gap-4">
-              {user && (
-                <button onClick={() => { sessionStorage.removeItem('sb_security_gate'); dbService.logout(); }} className="flex items-center gap-2 text-zinc-500 hover:text-rose-500 font-black text-[10px] uppercase tracking-widest bg-zinc-900 px-6 py-3 rounded-xl transition-colors">
-                  <LogOut size={14} /> Log Out
-                </button>
-              )}
-            </div>
+            <button onClick={() => { sessionStorage.removeItem('sb_security_gate'); dbService.logout(); }} className="flex items-center gap-2 text-zinc-500 hover:text-rose-500 font-black text-[10px] uppercase tracking-widest bg-zinc-900 px-6 py-3 rounded-xl transition-colors">
+              <LogOut size={14} /> Log Out
+            </button>
             <div className="text-right">
               <h2 className="text-4xl font-black text-white">ניהול ממשקים</h2>
               <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-1">Active Partnership Ecosystem</p>
@@ -249,38 +221,36 @@ const AdminDashboard: React.FC<Props> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {sessions.map(session => (
-              <div key={session.id} className="glass rounded-[2.5rem] p-8 border-white/5 hover:border-indigo-500/20 transition-all group relative overflow-hidden flex flex-col min-h-[400px]">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500/0 to-transparent group-hover:via-indigo-500 transition-all duration-700"></div>
-                
+              <div key={session.id} className="glass rounded-[2.5rem] p-8 border-white/5 hover:border-indigo-500/20 transition-all group flex flex-col min-h-[380px]">
                 <div className="flex justify-between items-start mb-8">
                   <div className="flex gap-2">
                     <button onClick={() => onDelete?.(session.id)} className="p-2 text-zinc-700 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
                     <button onClick={() => onOpenSettings?.(session.id)} className="p-2 text-zinc-700 hover:text-indigo-400 transition-colors"><Settings2 size={16} /></button>
                   </div>
-                  <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center font-black text-indigo-500">SB</div>
+                  <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center font-black text-indigo-500 text-xs">SB</div>
                 </div>
 
-                <div className="flex-grow space-y-4 text-right">
-                  <h3 className="text-2xl font-black text-white group-hover:text-indigo-400 transition-colors">{session.title}</h3>
-                  <p className="text-zinc-500 text-xs font-bold">{session.sides.join(' • ')}</p>
+                <div className="flex-grow space-y-2 text-right">
+                  <h3 className="text-xl font-black text-white group-hover:text-indigo-400 transition-colors">{session.title}</h3>
+                  <p className="text-zinc-500 text-[11px] font-bold line-clamp-2">{session.sides.join(' • ')}</p>
                   
-                  <div className="flex items-center gap-4 justify-end mt-8">
+                  <div className="flex items-center gap-4 justify-end mt-6">
                     <div className="text-right">
-                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Responses</p>
-                      <p className="text-2xl font-black text-white">{session.responses?.length || 0}</p>
+                      <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Responses</p>
+                      <p className="text-xl font-black text-white">{session.responses?.length || 0}</p>
                     </div>
-                    <div className="w-px h-8 bg-zinc-900"></div>
+                    <div className="w-px h-6 bg-zinc-800"></div>
                     <div className="text-right">
-                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Status</p>
-                      <p className="text-xs font-bold text-emerald-500">Active</p>
+                      <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Status</p>
+                      <p className="text-[10px] font-bold text-emerald-500">Active</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-10 grid grid-cols-2 gap-4">
+                <div className="mt-8 grid grid-cols-2 gap-3">
                   <button 
                     onClick={() => onOpenResults?.(session.id)}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2"
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-black text-[11px] transition-all flex items-center justify-center gap-2"
                   >
                     <LayoutDashboard size={14} /> דאשבורד
                   </button>
@@ -289,9 +259,9 @@ const AdminDashboard: React.FC<Props> = ({
                       const url = new URL(window.location.origin + window.location.pathname);
                       url.searchParams.set('sid', session.id);
                       navigator.clipboard.writeText(url.toString());
-                      alert('לינק לשאלון הועתק!');
+                      alert('לינק הועתק!');
                     }}
-                    className="bg-zinc-900 text-zinc-400 hover:text-white py-4 rounded-2xl font-black text-xs transition-all border border-zinc-800"
+                    className="bg-zinc-900 text-zinc-400 hover:text-white py-3 rounded-xl font-black text-[11px] transition-all border border-zinc-800"
                   >
                     העתק לינק
                   </button>
@@ -301,14 +271,14 @@ const AdminDashboard: React.FC<Props> = ({
 
             <button 
               onClick={() => onOpenSettings?.('')}
-              className="rounded-[2.5rem] border-2 border-dashed border-zinc-800 p-8 flex flex-col items-center justify-center gap-6 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all group min-h-[400px]"
+              className="rounded-[2.5rem] border-2 border-dashed border-zinc-800 p-8 flex flex-col items-center justify-center gap-6 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all group min-h-[380px]"
             >
-              <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center text-zinc-600 group-hover:text-indigo-500 transition-colors">
-                <Plus size={32} />
+              <div className="w-14 h-14 bg-zinc-900 rounded-full flex items-center justify-center text-zinc-600 group-hover:text-indigo-500 transition-colors">
+                <Plus size={28} />
               </div>
               <div className="text-center">
                 <p className="text-white font-black text-lg">הקמת ממשק חדש</p>
-                <p className="text-zinc-600 text-xs font-bold mt-1">Configure Strategic Interface</p>
+                <p className="text-zinc-600 text-[10px] font-black uppercase tracking-widest mt-1">Configure Interface</p>
               </div>
             </button>
           </div>
