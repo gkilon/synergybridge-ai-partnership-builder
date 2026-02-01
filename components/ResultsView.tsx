@@ -226,10 +226,10 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
             <div className="bg-[#0b0b0d] rounded-[3.5rem] p-10 border border-white/5 shadow-2xl h-[600px] flex flex-col">
                <div className="flex items-center gap-4 justify-end mb-10">
                   <div className="text-right">
-                     <h3 className="text-2xl font-black text-white">מפת השפעה (Impact)</h3>
-                     <p className="text-zinc-500 text-[10px] font-bold">מי המשתנים שקובעים את ההצלחה?</p>
+                     <h3 className="text-2xl font-black text-white">מפת השפעה (Impact Map)</h3>
+                     <p className="text-zinc-500 text-[10px] font-bold">ציונים נמוכים במשתנים משפיעים דורשים טיפול דחוף</p>
                   </div>
-                  <Info className="text-emerald-500" size={28} />
+                  <Info className="text-sky-400" size={28} />
                </div>
                
                <div className="flex-grow">
@@ -247,7 +247,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                           orientation="right"
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fill: '#ffffff', fontSize: 15, fontWeight: 900, dx: -10 }} 
+                          tick={{ fill: '#ffffff', fontSize: 14, fontWeight: 900, dx: -10 }} 
                           width={140}
                         />
                         <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => {
@@ -255,7 +255,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                             return (
                               <div className="bg-black p-4 rounded-2xl border border-zinc-800 text-right shadow-2xl">
                                  <p className="text-white font-black text-sm">{payload[0].payload.label}</p>
-                                 <p className="text-emerald-400 text-xs mt-1">עוצמת השפעה: {Number(payload[0].value).toFixed(2)}</p>
+                                 <p className="text-sky-400 text-xs mt-1">עוצמת השפעה: {Number(payload[0].value).toFixed(2)}</p>
                               </div>
                             );
                           }
@@ -269,10 +269,22 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                           {stats.impactData.map((entry, index) => (
                             <Cell 
                               key={`cell-${index}`} 
-                              fill={entry.impact > 0.6 ? '#10b981' : entry.impact > 0.3 ? '#6366f1' : '#1a1a1e'} 
-                              style={{ filter: entry.impact > 0.1 ? 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.2))' : 'none' }}
+                              fill={entry.impact > 0.6 ? '#10b981' : entry.impact > 0.3 ? '#6366f1' : '#0ea5e9'} 
+                              style={{ filter: entry.impact > 0.1 ? `drop-shadow(0 0 8px ${entry.impact > 0.6 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(99, 102, 241, 0.3)'})` : 'none' }}
                             />
                           ))}
+                          <LabelList 
+                            dataKey="impact" 
+                            position="left" 
+                            content={(props: any) => {
+                               const { x, y, value } = props;
+                               return (
+                                 <text x={x + 10} y={y + 20} fill="#ffffff" fontSize={11} fontWeight={900} textAnchor="start">
+                                   {Math.round(value * 100)}%
+                                 </text>
+                               );
+                            }}
+                          />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
