@@ -5,7 +5,7 @@ import { dbService } from './services/dbService';
 import AdminDashboard from './components/AdminDashboard';
 import SurveyView from './components/SurveyView';
 import ResultsView from './components/ResultsView';
-import { ShieldCheck, Plus, LayoutDashboard, Settings, Search, AlertTriangle, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Plus, LayoutDashboard, Settings, Search, AlertTriangle, RefreshCw, Globe } from 'lucide-react';
 
 type ViewState = {
   main: 'admin' | 'survey' | 'landing';
@@ -28,26 +28,28 @@ const App: React.FC = () => {
     setIsSearchingSession(true);
     setSearchError(false);
     
-    // Attempt direct fetch
-    const session = await dbService.getSessionById(sid);
+    // Initial wait to ensure Firebase has time to breathe
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Attempt 1
+    let session = await dbService.getSessionById(sid);
     if (session) {
-      setSessions(prev => {
-        if (prev.find(s => s.id === sid)) return prev;
-        return [...prev, session];
-      });
+      setSessions(prev => prev.find(s => s.id === sid) ? prev : [...prev, session!]);
+      setIsSearchingSession(false);
+      return;
+    }
+
+    // Attempt 2 (Retry after delay)
+    console.log("SynergyBridge: Retrying cloud fetch...");
+    await new Promise(r => setTimeout(r, 2500));
+    session = await dbService.getSessionById(sid);
+    
+    if (session) {
+      setSessions(prev => prev.find(s => s.id === sid) ? prev : [...prev, session!]);
       setIsSearchingSession(false);
     } else {
-      // Small delay and retry for eventual consistency
-      setTimeout(async () => {
-        const retry = await dbService.getSessionById(sid);
-        if (retry) {
-          setSessions(prev => [...prev, retry]);
-          setIsSearchingSession(false);
-        } else {
-          setSearchError(true);
-          setIsSearchingSession(false);
-        }
-      }, 3000);
+      setSearchError(true);
+      setIsSearchingSession(false);
     }
   }, []);
 
@@ -57,6 +59,8 @@ const App: React.FC = () => {
     if (sid) {
       setView({ main: 'survey', adminTab: 'list', selectedId: sid });
       resolveSession(sid);
+    } else if (window.location.pathname.includes('/admin')) {
+      setView({ main: 'admin', adminTab: 'list', selectedId: null });
     }
   }, [resolveSession]);
 
@@ -87,8 +91,13 @@ const App: React.FC = () => {
       createdAt: new Date().toISOString(),
       language: lang
     };
-    await dbService.saveSession(newSession);
-    setView({ main: 'admin', adminTab: 'list', selectedId: null });
+    try {
+      await dbService.saveSession(newSession);
+      setView({ main: 'admin', adminTab: 'list', selectedId: null });
+    } catch (e) {
+      alert("שגיאה בסנכרון לענן. השאלון נשמר מקומית בלבד. וודא הגדרות Firebase.");
+      setView({ main: 'admin', adminTab: 'list', selectedId: null });
+    }
   };
 
   const handleUpdateSession = async (updated: PartnershipSession) => {
@@ -120,42 +129,40 @@ const App: React.FC = () => {
   if (isLoading) return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-6">
       <ShieldCheck className="text-indigo-500 animate-pulse" size={64} />
-      <p className="text-zinc-500 font-black tracking-widest uppercase text-xs">Authenticating SynergyBridge...</p>
+      <p className="text-zinc-500 font-black tracking-widest uppercase text-xs">SynergyBridge Security Layer...</p>
     </div>
   );
 
-  // Searching for a specific SID from URL
   if (view.main === 'survey' && view.selectedId && isSearchingSession) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-8 p-6 text-center">
         <div className="relative">
-           <div className="w-20 h-20 border-4 border-indigo-600/20 border-t-indigo-500 rounded-full animate-spin"></div>
-           <Search className="absolute inset-0 m-auto text-indigo-500" size={24} />
+           <div className="w-24 h-24 border-4 border-indigo-600/10 border-t-indigo-500 rounded-full animate-spin"></div>
+           <Globe className="absolute inset-0 m-auto text-indigo-500/50 animate-pulse" size={32} />
         </div>
-        <div className="space-y-2">
-           <h2 className="text-2xl font-black text-white">מתחבר לממשק...</h2>
-           <p className="text-zinc-500 text-sm font-bold">אנחנו מושכים את נתוני השאלון מהענן עבורך.</p>
+        <div className="space-y-3">
+           <h2 className="text-3xl font-black text-white">מחפש שותפות בענן...</h2>
+           <p className="text-zinc-500 text-sm font-bold max-w-xs mx-auto">אנחנו יוצרים קשר עם שרת SynergyBridge כדי למשוך את נתוני הממשק.</p>
         </div>
       </div>
     );
   }
 
-  // Error finding the specific SID
   if (view.main === 'survey' && view.selectedId && searchError) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-8 p-6 text-center" dir="rtl">
-        <div className="w-20 h-20 bg-rose-500/10 rounded-[2rem] flex items-center justify-center text-rose-500 mx-auto">
-           <AlertTriangle size={40} />
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-12 p-10 text-center" dir="rtl">
+        <div className="w-28 h-28 bg-rose-500/10 rounded-[2.5rem] flex items-center justify-center text-rose-500 mx-auto shadow-2xl">
+           <AlertTriangle size={56} />
         </div>
-        <div className="space-y-3 max-w-sm">
-           <h2 className="text-3xl font-black text-white">הממשק לא נמצא</h2>
-           <p className="text-zinc-500 font-medium">הקישור שקיבלת לא קיים בענן או שטרם סונכרן. וודא שהמנהל יצר את הממשק כשהוא מחובר (נורית ירוקה).</p>
+        <div className="space-y-4 max-w-md">
+           <h2 className="text-5xl font-black text-white tracking-tighter">הממשק לא נמצא</h2>
+           <p className="text-zinc-400 font-medium text-lg leading-relaxed">הקישור אינו קיים במסד הנתונים הענני. ייתכן שהממשק נוצר במצב 'לא מחובר' או נמחק.</p>
         </div>
-        <div className="flex flex-col gap-4 w-full max-w-xs">
-           <button onClick={() => window.location.reload()} className="w-full bg-white text-black py-4 rounded-2xl font-black flex items-center justify-center gap-2">
-              <RefreshCw size={18} /> נסה שוב
+        <div className="flex flex-col gap-6 w-full max-w-sm">
+           <button onClick={() => window.location.reload()} className="w-full bg-white text-black py-6 rounded-3xl font-black text-xl flex items-center justify-center gap-3 shadow-2xl hover:bg-zinc-200 transition-all active:scale-95">
+              <RefreshCw size={24} /> נסה שוב
            </button>
-           <button onClick={goToLanding} className="text-zinc-500 font-black text-xs uppercase tracking-widest">חזרה לדף הבית</button>
+           <button onClick={goToLanding} className="text-zinc-600 hover:text-white transition-colors font-black text-xs uppercase tracking-[0.3em]">Return Home</button>
         </div>
       </div>
     );
@@ -175,7 +182,7 @@ const App: React.FC = () => {
         <div className="max-w-3xl space-y-12 animate-fadeIn">
           <div className="space-y-4">
             <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center font-black text-4xl mx-auto shadow-2xl shadow-indigo-600/30">SB</div>
-            <h1 className="text-6xl font-black tracking-tighter">Synergy<span className="text-indigo-500">Bridge</span></h1>
+            <h1 className="text-7xl font-black tracking-tighter">Synergy<span className="text-indigo-500">Bridge</span></h1>
             <p className="text-zinc-500 text-xl font-medium max-w-xl mx-auto">הכלי החכם לבנייה ואופטימיזציה של ממשקים ארגוניים.</p>
           </div>
           <div className="flex flex-col md:flex-row gap-6 justify-center">

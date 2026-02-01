@@ -26,6 +26,7 @@ const AdminDashboard: React.FC<Props> = ({
   const [error, setError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [cloudActive, setCloudActive] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   const [newTitle, setNewTitle] = useState('');
   const [newSides, setNewSides] = useState('');
@@ -60,6 +61,26 @@ const AdminDashboard: React.FC<Props> = ({
     setEditingQuestions([...DEFAULT_QUESTIONS]);
   };
 
+  const handleGateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === 'giladk25') {
+      setIsLoggingIn(true);
+      try {
+        // Essential: Trigger Firebase Auth to satisfy "allow create: if request.auth != null"
+        await dbService.loginAdmin();
+        setGatePassed(true);
+        sessionStorage.setItem('sb_security_gate', 'true');
+      } catch (err) {
+        alert("תקלה בחיבור לענן. וודא אינטרנט תקין.");
+      } finally {
+        setIsLoggingIn(false);
+      }
+    } else {
+      setError(true);
+      setPasswordInput('');
+    }
+  };
+
   const handleSave = async () => {
     if (!newTitle.trim()) { alert("נא להזין כותרת"); return; }
     const sidesArr = newSides.split(',').map(s => s.trim()).filter(s => s);
@@ -76,9 +97,13 @@ const AdminDashboard: React.FC<Props> = ({
         await onAdd?.(newTitle, sidesArr, editingQuestions, newContext, newLang);
         resetForm();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Save failed:", err);
-      alert("תקלה בשמירה.");
+      if (err?.code === 'permission-denied') {
+        alert("שגיאת הרשאות: הענן חוסם את הכתיבה. וודא שהגדרת את ה-Security Rules נכון ושהתחברת כאדמין.");
+      } else {
+        alert("תקלה בשמירה לענן. נסה שוב.");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -93,18 +118,26 @@ const AdminDashboard: React.FC<Props> = ({
             <div className="w-16 h-16 bg-indigo-600/10 rounded-2xl flex items-center justify-center mx-auto text-indigo-500"><KeyRound size={32} /></div>
             <div className="space-y-1">
                <h2 className="text-3xl font-black text-white">כניסת מנהל</h2>
-               <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Restricted Access Area</p>
+               <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Secure Admin Portal</p>
             </div>
           </div>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            if (passwordInput === 'giladk25') {
-              setGatePassed(true);
-              sessionStorage.setItem('sb_security_gate', 'true');
-            } else { setError(true); setPasswordInput(''); }
-          }} className="space-y-6">
-            <input type="password" placeholder="קוד גישה..." className={`w-full bg-zinc-950 border-2 rounded-2xl p-5 text-white font-black text-center text-2xl tracking-widest transition-all outline-none ${error ? 'border-rose-500 bg-rose-500/5' : 'border-zinc-800 focus:border-indigo-500'}`} value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setError(false); }} autoFocus />
-            <button type="submit" className="w-full bg-white text-black py-5 rounded-2xl font-black text-lg transition-all shadow-xl hover:bg-zinc-200 active:scale-95">כניסה</button>
+          <form onSubmit={handleGateSubmit} className="space-y-6">
+            <input 
+              type="password" 
+              placeholder="קוד גישה..." 
+              className={`w-full bg-zinc-950 border-2 rounded-2xl p-5 text-white font-black text-center text-2xl tracking-widest transition-all outline-none ${error ? 'border-rose-500 bg-rose-500/5' : 'border-zinc-800 focus:border-indigo-500'}`} 
+              value={passwordInput} 
+              onChange={(e) => { setPasswordInput(e.target.value); setError(false); }} 
+              autoFocus 
+            />
+            <button 
+              type="submit" 
+              disabled={isLoggingIn}
+              className="w-full bg-white text-black py-5 rounded-2xl font-black text-lg transition-all shadow-xl hover:bg-zinc-200 active:scale-95 flex items-center justify-center gap-3"
+            >
+              {isLoggingIn && <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>}
+              {isLoggingIn ? 'מתחבר לענן...' : 'כניסה'}
+            </button>
           </form>
         </div>
       </div>
@@ -119,7 +152,7 @@ const AdminDashboard: React.FC<Props> = ({
       <div className="fixed bottom-8 left-8 z-50">
         <div className={`px-4 py-2 rounded-full border flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-2xl ${cloudActive ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'}`}>
           {cloudActive ? <Cloud size={14} /> : <CloudOff size={14} />}
-          {cloudActive ? 'Cloud Connected' : 'Local Only Mode'}
+          {cloudActive ? 'Cloud Online' : 'Cloud Offline'}
         </div>
       </div>
 
@@ -152,16 +185,16 @@ const AdminDashboard: React.FC<Props> = ({
 
           <button onClick={handleSave} disabled={isSaving} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white py-6 rounded-2xl font-black text-xl transition-all shadow-2xl shadow-indigo-600/20 flex items-center justify-center gap-3">
             {isSaving ? <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div> : <Save size={24} />}
-            <span>שמור ממשק</span>
+            <span>שמור ממשק לענן</span>
           </button>
         </div>
       ) : (
         <div className="space-y-8">
           <div className="flex justify-between items-center mb-12">
-            <button onClick={() => { sessionStorage.removeItem('sb_security_gate'); dbService.logout(); }} className="flex items-center gap-2 text-zinc-500 hover:text-rose-500 font-black text-[10px] uppercase tracking-widest bg-zinc-900 px-6 py-3 rounded-xl transition-colors"><LogOut size={14} /> Log Out</button>
+            <button onClick={() => { sessionStorage.removeItem('sb_security_gate'); dbService.logout(); window.location.reload(); }} className="flex items-center gap-2 text-zinc-500 hover:text-rose-500 font-black text-[10px] uppercase tracking-widest bg-zinc-900 px-6 py-3 rounded-xl transition-colors"><LogOut size={14} /> Log Out</button>
             <div className="text-right">
               <h2 className="text-4xl font-black text-white">ניהול ממשקים</h2>
-              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-1">Active Ecosystem</p>
+              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-1">Cloud Ecosystem</p>
             </div>
           </div>
 
@@ -185,7 +218,7 @@ const AdminDashboard: React.FC<Props> = ({
                       const url = new URL(window.location.origin + window.location.pathname);
                       url.searchParams.set('sid', session.id);
                       navigator.clipboard.writeText(url.toString());
-                      alert('לינק הועתק לענן!');
+                      alert('הלינק הועתק! המשתתפים יוכלו לגשת אליו מכל מקום.');
                     }} className="bg-zinc-900 text-zinc-400 hover:text-white py-3 rounded-xl font-black text-[11px] transition-all border border-zinc-800">העתק לינק</button>
                 </div>
               </div>
