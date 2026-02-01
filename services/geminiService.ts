@@ -25,19 +25,19 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
-    Role: Senior Organizational Data Scientist & Strategy Consultant.
-    Mission: Diagnose an organizational partnership using Multiple Linear Regression (MLR) results.
+    Role: Senior Organizational Strategy Consultant & Data Analyst.
+    Mission: Diagnose an organizational partnership based on "Association Strength" (Cramér's V / Chi-Square) results.
     
     KEY DATA INPUTS:
-    - Overall Satisfaction Score: ${aggregatedData.satisfactionScore}%
-    - Standardized Regression Weights (Beta coefficients): ${JSON.stringify(aggregatedData.impactData)}
-    - Statistical Validity: ${aggregatedData.isRegressionValid ? 'High (Sufficient N)' : 'Low (Interpret with caution)'}
+    - Overall Health Score: ${aggregatedData.satisfactionScore}%
+    - Driver Importance (Strength of Association): ${JSON.stringify(aggregatedData.impactData)}
+    - Methodology used: ${aggregatedData.method}
     
     DIAGNOSIS LOGIC:
-    1. Drivers with high Beta (Impact > 0.3) are the "True Levers". Focus recommendations here.
-    2. If a driver has a low raw score but high Beta, it's a "Critical Pain Point".
-    3. If a driver has high score and high Beta, it's a "Strategic Pillar".
-    4. Distinguish between systemic factors (Agenda, Roles, Decisions, Processes) and relational factors (Respect, Communication).
+    1. Look for "High Strength, Low Score" - these are your CRITICAL INTERVENTIONS.
+    2. High Strength means this driver uniquely dictates the success of the interface.
+    3. Even with few respondents, prioritize drivers that show a strong non-random association with the outcome.
+    4. Balance Systemic (processes/roles) vs Relational (trust/communication).
     
     Output Language: Hebrew (עברית).
     Format: Return ONLY a JSON object matching the provided schema.
