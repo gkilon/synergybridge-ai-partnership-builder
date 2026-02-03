@@ -50,4 +50,5 @@ export interface AIAnalysis {
     relational: string[];
   };
   summary: string;
+  gapInsights?: string[]; // New: Deeper analysis of misalignments between sides
 }

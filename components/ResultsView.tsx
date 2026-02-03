@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import { analyzePartnership, expandRecommendation } from '../services/geminiService';
 import { DEFAULT_QUESTIONS } from '../constants';
-import { Zap, Target, Activity, Sparkles, TrendingUp, BarChart3, Info, ChevronLeft, Boxes, AlertCircle } from 'lucide-react';
+import { Zap, Target, Activity, Sparkles, TrendingUp, BarChart3, Info, ChevronLeft, Boxes, AlertCircle, Split } from 'lucide-react';
 
 interface Props {
   session: PartnershipSession | undefined;
@@ -155,7 +155,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
            </button>
            <button onClick={handleAnalyze} disabled={loading} className={`px-14 py-5 rounded-[1.5rem] font-black transition-all flex items-center gap-3 shadow-2xl ${loading ? 'bg-zinc-800 text-zinc-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 active:scale-95'}`}>
              {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <Sparkles size={22} />}
-             {loading ? 'מפענח...' : 'הפעל ניתוח AI'}
+             {loading ? 'מפענח עומק...' : 'הפעל ניתוח AI מקיף'}
            </button>
         </div>
       </div>
@@ -315,16 +315,36 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                   <div className="w-24 h-24 bg-zinc-900 rounded-[2.5rem] flex items-center justify-center text-5xl shadow-inner border border-white/5 animate-pulse">🧠</div>
                   <div className="space-y-4">
                      <p className="text-white text-xl font-black">ממתין להרצת הניתוח</p>
-                     <p className="text-zinc-500 text-xs font-bold leading-relaxed">ה-AI ישקלל את הנתונים ויבנה תוכנית עבודה לשיפור הממשק הארגוני.</p>
+                     <p className="text-zinc-500 text-xs font-bold leading-relaxed">ה-AI ישקלל את הנתונים, ינתח פערים בין הצוותים ויבנה תוכנית עבודה.</p>
                   </div>
                </div>
              ) : (
-               <div className="space-y-16 overflow-y-auto custom-scrollbar pr-2 h-[800px]">
+               <div className="space-y-12 overflow-y-auto custom-scrollbar pr-2 h-[800px]">
+                  
+                  {/* AI Summary Card */}
                   <div className="bg-indigo-600 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-600/20 relative overflow-hidden">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
                      <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-70 mb-6 text-right">Diagnosis Summary</h4>
-                     <p className="text-xl font-black leading-snug text-right italic relative z-10">"{session.analysis.summary}"</p>
+                     <p className="text-lg font-black leading-snug text-right italic relative z-10">"{session.analysis.summary}"</p>
                   </div>
+
+                  {/* Perspective Gaps Section (The "Juice") */}
+                  {session.analysis.gapInsights && session.analysis.gapInsights.length > 0 && (
+                    <div className="space-y-6 text-right">
+                       <h4 className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center justify-end gap-2">
+                          פערי פרספקטיבה (Misalignments)
+                          <Split size={14} />
+                       </h4>
+                       <div className="space-y-4">
+                          {session.analysis.gapInsights.map((insight, idx) => (
+                            <div key={idx} className="bg-amber-500/5 border border-amber-500/10 p-5 rounded-2xl flex gap-4 items-start flex-row-reverse">
+                               <AlertCircle className="text-amber-500 shrink-0 mt-1" size={16} />
+                               <p className="text-sm text-zinc-300 font-bold leading-relaxed">{insight}</p>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                  )}
                   
                   <div className="space-y-12 text-right">
                      <h4 className="text-xs font-black text-zinc-600 uppercase tracking-widest border-r-2 border-zinc-800 pr-4">המלצות אופרטיביות</h4>
