@@ -32,31 +32,34 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
   });
 
   const prompt = `
-    תפקיד: יועץ אסטרטגי בכיר לפיתוח ארגוני המומחה בניהול קונפליקטים ושיפור ממשקי עבודה.
-    משימה: אבחון עומק פסיכולוגי ואסטרטגי של ממשק עבודה בין שתי יחידות ארגוניות: "${session.title}".
+    תפקיד: מאמן אסטרטגי בכיר לפיתוח שותפויות ארגוניות.
+    משימה: אבחון והדרכה לשיפור ממשק עבודה בין שתי יחידות: "${session.title}".
     
-    הקשר ארגוני רחב: ${session.context || 'לא צוין'}
+    טון והנחיות סגנון:
+    - היה ענייני, ישיר ומקצועי מאוד, אך שמור על שפה מכבדת, מאפשרת ומעודדת צמיחה.
+    - הימנע משימוש במילים קשות או שיפוטיות מדי (כמו "קורבן", "קטסטרופה", "כישלון חרוץ").
+    - במקום "פער קריטי", השתמש במושגים כמו "הזדמנות לסנכרון" או "הבדל משמעותי בתפיסה".
+    - התמקד בבניית גשרים ולא בסימון אשמים.
     
-    נתונים כמותיים לניתוח (סקאלה 1-7):
-    1. ציון בריאות כללי: ${aggregatedData.satisfactionScore}%
+    הקשר ארגוני: ${session.context || 'לא צוין'}
+    
+    נתונים כמותיים (סקאלה 1-7):
+    1. ציון בריאות כללי (מבוסס שביעות רצון ותוצאה): ${aggregatedData.satisfactionScore}%
     2. עוצמת השפעה של כל דרייבר (Impact): ${JSON.stringify(aggregatedData.impactData)}
-    3. ציונים מפוצלים לפי צדדים (קריטי לניתוח פערים): ${JSON.stringify(sidesData)}
+    3. ציונים מפוצלים לפי צדדים: ${JSON.stringify(sidesData)}
     
-    מתודולוגיית אבחון נדרשת (תהיה נוקב, מעמיק ומקצועי):
-    א. ניתוח פערי תפיסה (Perceptual Gaps): זהה דרייברים שבהם יש פער של מעל נקודה אחת בין הצדדים. הסבר מה זה אומר על התקשורת ביניהם. האם צד אחד "חי בסרט" בעוד השני סובל?
-    ב. ניתוח רבעונים (Impact vs Performance): 
-       - אימפקט גבוה + ביצועים נמוכים = "צוואר בקבוק אסטרטגי".
-       - פער גדול + אימפקט גבוה = "נקודת פיצוץ פוטנציאלית".
-    ג. ניתוח שורש: אל תכתוב רק מה רואים בגרפים, תסיק מה הבעיה האמיתית (למשל: "יש כאן בעיית אמון שמתחפשת לבעיית תהליכים").
+    מתודולוגיה:
+    א. ניתוח הבדלי גישה: זהה היכן צד אחד חווה את המציאות בצורה שונה מהותית מהשני.
+    ב. תיעדוף פעולה: המלץ על דברים שיביאו לשיפור המרבי בשותפות (Impact vs Score).
+    ג. ראייה מערכתית: הבחן בין חסמים תהליכיים (Systemic) לדינמיקה בינאישית (Relational).
     
     דרישות פלט:
-    1. הניתוח חייב להיות ארוך, מפורט ומנומק.
-    2. summary: סקירה מעמיקה של 5-8 משפטים המנתחת את הדינמיקה האמיתית בממשק.
-    3. gapInsights: לפחות 3-5 תובנות חדות על הפערים בין הצדדים. היה ספציפי לגבי מי מרגיש מה.
-    4. recommendations: המלצות קונקרטיות שאינן גנריות.
+    1. summary: ניתוח של 5-8 משפטים המציע זווית ראייה חדשה ומקדמת על הממשק.
+    2. gapInsights: 3-5 תובנות על הבדלי התפיסה, בניסוח המאפשר דיאלוג בין הצדדים.
+    3. recommendations: צעדים מעשיים ליישום מיידי.
     
     שפת פלט: עברית (Hebrew).
-    פורמט: החזר אך ורק אובייקט JSON תקין לפי הסכימה.
+    פורמט: החזר אך ורק אובייקט JSON תקין.
   `;
 
   try {
@@ -66,8 +69,6 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
       config: {
         responseMimeType: "application/json",
         maxOutputTokens: 8000,
-        // Pro models require thinking to be active or omitted correctly. 
-        // Setting a positive budget allows for the requested deeper reasoning.
         thinkingConfig: { thinkingBudget: 4000 }, 
         responseSchema: {
           type: Type.OBJECT,
@@ -116,7 +117,7 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
 
 export const expandRecommendation = async (recommendation: string, context: string): Promise<string[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const prompt = `הפוך את ההמלצה הכללית הבאה ל-4 צעדים אופרטיביים וקונקרטיים ליישום בממשק ארגוני: "${recommendation}". הקשר: "${context}". השב ב-JSON (מערך של מחרוזות). עברית.`;
+  const prompt = `הפוך את ההמלצה הבאה ל-4 צעדים אופרטיביים ליישום. שמור על שפה מקצועית ומכבדת: "${recommendation}". הקשר: "${context}". השב ב-JSON (מערך של מחרוזות). עברית.`;
   
   try {
     const response = await ai.models.generateContent({
@@ -125,7 +126,7 @@ export const expandRecommendation = async (recommendation: string, context: stri
       config: {
         responseMimeType: "application/json",
         maxOutputTokens: 1000,
-        thinkingConfig: { thinkingBudget: 500 }, // Use a valid positive budget
+        thinkingConfig: { thinkingBudget: 500 },
         responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
       }
     });

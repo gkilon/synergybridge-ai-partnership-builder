@@ -52,13 +52,17 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
     const driverQs = questions.filter(q => q.shortLabel !== 'OUTCOME_SATISFACTION');
     const groups = Array.from(new Set(driverQs.map(q => q.shortLabel).filter(Boolean))) as string[];
     
+    // Outcome scores mapping (1-7 scale)
     const Y = session.responses.map(r => {
       let sum = 0, count = 0;
       outcomeQs.forEach(q => {
         const score = r.scores?.[q.id];
-        if (typeof score === 'number' && score > 0) { sum += score; count++; }
+        if (typeof score === 'number' && score > 0) { 
+          sum += score; 
+          count++; 
+        }
       });
-      return count > 0 ? sum / count : 4;
+      return count > 0 ? sum / count : 4; // Default to neutral if no outcome data
     });
 
     const driverResults = groups.map(label => {
@@ -96,11 +100,14 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
       return { label, impact: impactValue, sideAvgs };
     });
 
-    const totalAvgY = Y.reduce((a, b) => a + b, 0) / Y.length;
+    // Logical satisfaction score calculation: (Average-1)/6 * 100 maps 1->0% and 7->100%
+    const validY = Y.filter(val => !isNaN(val));
+    const totalAvgY = validY.length > 0 ? validY.reduce((a, b) => a + b, 0) / validY.length : 4;
     const satisfactionScore = Math.round(((totalAvgY - 1) / 6) * 100);
+    
     const methodLabel = session.responses.length >= 5 ? 'Statistical Correlation' : 'Gap Analysis';
     const sortedImpact = [...driverResults].sort((a, b) => b.impact - a.impact);
-    const primary = sortedImpact[0].impact > 0 ? sortedImpact[0] : null;
+    const primary = sortedImpact[0]?.impact > 0 ? sortedImpact[0] : null;
 
     return { 
       driverData: driverResults.map(r => r.sideAvgs), 
@@ -140,7 +147,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
            <div className="text-right">
               <h2 className="text-5xl font-black text-white tracking-tighter leading-none mb-2">{session.title}</h2>
               <div className="flex items-center gap-3 justify-end">
-                 <span className="text-indigo-500 font-black text-[11px] uppercase tracking-[0.3em]">Statistical Synergy Mapping</span>
+                 <span className="text-indigo-500 font-black text-[11px] uppercase tracking-[0.3em]">Partnership Analytics Hub</span>
                  <div className="w-12 h-px bg-zinc-800"></div>
               </div>
            </div>
@@ -155,7 +162,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
            </button>
            <button onClick={handleAnalyze} disabled={loading} className={`px-14 py-5 rounded-[1.5rem] font-black transition-all flex items-center gap-3 shadow-2xl ${loading ? 'bg-zinc-800 text-zinc-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 active:scale-95'}`}>
              {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : <Sparkles size={22} />}
-             {loading ? 'מפענח עומק...' : 'הפעל ניתוח AI מקיף'}
+             {loading ? 'מגבש תובנות...' : 'הפעל ניתוח AI מעמיק'}
            </button>
         </div>
       </div>
@@ -164,10 +171,11 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
         <div className="xl:col-span-8 space-y-10">
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-[#0b0b0d] rounded-[2.5rem] p-10 border border-white/5 text-right shadow-xl">
-               <Activity className="text-indigo-500 mb-6" size={32} />
-               <h3 className="text-zinc-500 text-[11px] font-black uppercase tracking-widest mb-1">מדד בריאות (Global Health)</h3>
+            <div className="bg-[#0b0b0d] rounded-[2.5rem] p-10 border border-white/5 text-right shadow-xl group">
+               <Activity className="text-indigo-500 mb-6 group-hover:scale-110 transition-transform" size={32} />
+               <h3 className="text-zinc-500 text-[11px] font-black uppercase tracking-widest mb-1">מדד בריאות הממשק</h3>
                <div className="text-7xl font-black text-white tracking-tighter">{stats.satisfactionScore}%</div>
+               <p className="text-zinc-600 text-[9px] font-bold mt-2">מבוסס על שקלול שביעות רצון ותוצאות</p>
             </div>
 
             <div className="bg-[#0b0b0d] rounded-[2.5rem] p-10 border border-white/5 text-right shadow-xl">
@@ -222,7 +230,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                </div>
             </div>
 
-            {/* Optimized Impact Chart */}
+            {/* Impact Chart */}
             <div className="bg-[#0b0b0d] rounded-[3.5rem] p-10 border border-white/5 shadow-2xl h-[600px] flex flex-col">
                <div className="flex items-center gap-4 justify-end mb-10">
                   <div className="text-right">
@@ -315,7 +323,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                   <div className="w-24 h-24 bg-zinc-900 rounded-[2.5rem] flex items-center justify-center text-5xl shadow-inner border border-white/5 animate-pulse">🧠</div>
                   <div className="space-y-4">
                      <p className="text-white text-xl font-black">ממתין להרצת הניתוח</p>
-                     <p className="text-zinc-500 text-xs font-bold leading-relaxed">ה-AI ישקלל את הנתונים, ינתח פערים בין הצוותים ויבנה תוכנית עבודה.</p>
+                     <p className="text-zinc-500 text-xs font-bold leading-relaxed">ה-AI ישקלל את הנתונים, ינתח הבדלי תפיסה ויציע דרכי פעולה מקדמות.</p>
                   </div>
                </div>
              ) : (
@@ -324,15 +332,15 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                   {/* AI Summary Card */}
                   <div className="bg-indigo-600 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-600/20 relative overflow-hidden">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-                     <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-70 mb-6 text-right">Diagnosis Summary</h4>
+                     <h4 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-70 mb-6 text-right">Strategic Insight</h4>
                      <p className="text-lg font-black leading-snug text-right italic relative z-10">"{session.analysis.summary}"</p>
                   </div>
 
-                  {/* Perspective Gaps Section (The "Juice") */}
+                  {/* Perspective Gaps Section */}
                   {session.analysis.gapInsights && session.analysis.gapInsights.length > 0 && (
                     <div className="space-y-6 text-right">
                        <h4 className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center justify-end gap-2">
-                          פערי פרספקטיבה (Misalignments)
+                          הבדלי תפיסה (Perspective Alignment)
                           <Split size={14} />
                        </h4>
                        <div className="space-y-4">
@@ -347,7 +355,7 @@ const ResultsView: React.FC<Props> = ({ session, onUpdate, onBack }) => {
                   )}
                   
                   <div className="space-y-12 text-right">
-                     <h4 className="text-xs font-black text-zinc-600 uppercase tracking-widest border-r-2 border-zinc-800 pr-4">המלצות אופרטיביות</h4>
+                     <h4 className="text-xs font-black text-zinc-600 uppercase tracking-widest border-r-2 border-zinc-800 pr-4">המלצות לפעולה</h4>
                      <div className="space-y-8">
                         {[...(session.analysis.recommendations?.systemic || []), ...(session.analysis.recommendations?.relational || [])].map((rec, i) => (
                           <div key={i} className="group">
