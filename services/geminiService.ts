@@ -32,40 +32,43 @@ export const analyzePartnership = async (session: PartnershipSession, aggregated
   });
 
   const prompt = `
-    תפקיד: יועץ אסטרטגי בכיר לפיתוח ארגוני ומנהל דאטה.
-    משימה: אבחון עומק של ממשק עבודה בין שתי יחידות ארגוניות: "${session.title}".
+    תפקיד: יועץ אסטרטגי בכיר לפיתוח ארגוני המומחה בניהול קונפליקטים ושיפור ממשקי עבודה.
+    משימה: אבחון עומק פסיכולוגי ואסטרטגי של ממשק עבודה בין שתי יחידות ארגוניות: "${session.title}".
     
-    הקשר ארגוני: ${session.context || 'לא צוין'}
+    הקשר ארגוני רחב: ${session.context || 'לא צוין'}
     
-    נתונים כמותיים לניתוח:
+    נתונים כמותיים לניתוח (סקאלה 1-7):
     1. ציון בריאות כללי: ${aggregatedData.satisfactionScore}%
     2. עוצמת השפעה של כל דרייבר (Impact): ${JSON.stringify(aggregatedData.impactData)}
-    3. ציונים מפוצלים לפי צדדים (הכי חשוב!): ${JSON.stringify(sidesData)}
+    3. ציונים מפוצלים לפי צדדים (קריטי לניתוח פערים): ${JSON.stringify(sidesData)}
     
-    מתודולוגיית אבחון נדרשת:
-    א. ניתוח פערים (Gap Analysis): זהה דרייברים שבהם יש פער גדול (>1.5 נקודות) בין הצדדים. פער כזה מעיד על חוסר סנכרון או "עיוורון" של אחד הצדדים למציאות של השני.
-    ב. ניתוח משולב (Quadrant Analysis): 
-       - אימפקט גבוה + ציון נמוך אצל כולם = משבר מערכתי דחוף.
-       - אימפקט גבוה + פער גדול בין הצדדים = משבר אמון או אי-הבנה תהליכית עמוקה.
-    ג. הבחנה בין מערכתי (Systemic) ליחסי (Relational).
+    מתודולוגיית אבחון נדרשת (תהיה נוקב, מעמיק ומקצועי):
+    א. ניתוח פערי תפיסה (Perceptual Gaps): זהה דרייברים שבהם יש פער של מעל נקודה אחת בין הצדדים. הסבר מה זה אומר על התקשורת ביניהם. האם צד אחד "חי בסרט" בעוד השני סובל?
+    ב. ניתוח רבעונים (Impact vs Performance): 
+       - אימפקט גבוה + ביצועים נמוכים = "צוואר בקבוק אסטרטגי".
+       - פער גדול + אימפקט גבוה = "נקודת פיצוץ פוטנציאלית".
+    ג. ניתוח שורש: אל תכתוב רק מה רואים בגרפים, תסיק מה הבעיה האמיתית (למשל: "יש כאן בעיית אמון שמתחפשת לבעיית תהליכים").
     
     דרישות פלט:
-    1. הניתוח חייב להיות מקיף, בוגר ונטול קלישאות.
-    2. סעיף ה-summary צריך להיות באורך של 4-5 משפטים המאבחנים את ה"שורש" של המצב.
-    3. ב-gapInsights, ציין ספציפית איזה צד מרגיש מה (למשל: "צד א' חווה חוסר בבהירות תפקידית בעוד שצד ב' בטוח שהדברים ברורים").
+    1. הניתוח חייב להיות ארוך, מפורט ומנומק.
+    2. summary: סקירה מעמיקה של 5-8 משפטים המנתחת את הדינמיקה האמיתית בממשק.
+    3. gapInsights: לפחות 3-5 תובנות חדות על הפערים בין הצדדים. היה ספציפי לגבי מי מרגיש מה.
+    4. recommendations: המלצות קונקרטיות שאינן גנריות.
     
     שפת פלט: עברית (Hebrew).
-    פורמט: החזר אך ורק אובייקט JSON תקין.
+    פורמט: החזר אך ורק אובייקט JSON תקין לפי הסכימה.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Upgraded for deeper reasoning
+      model: 'gemini-3-pro-preview', 
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        maxOutputTokens: 3500,
-        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 8000,
+        // Pro models require thinking to be active or omitted correctly. 
+        // Setting a positive budget allows for the requested deeper reasoning.
+        thinkingConfig: { thinkingBudget: 4000 }, 
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -122,7 +125,7 @@ export const expandRecommendation = async (recommendation: string, context: stri
       config: {
         responseMimeType: "application/json",
         maxOutputTokens: 1000,
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingBudget: 500 }, // Use a valid positive budget
         responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
       }
     });
